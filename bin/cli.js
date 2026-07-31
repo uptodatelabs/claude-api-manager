@@ -24,7 +24,74 @@ function getProfileSummary(profile) {
   return parts.join(" | ");
 }
 
-function printApplyResult(name, settings) {
+function printProfileDetail(profile) {
+  console.log(chalk.bold("env:"));
+  const env = profile.env || {};
+  if (Object.keys(env).length === 0) {
+    console.log(chalk.dim("  (없음)"));
+  } else {
+    for (const [key, value] of Object.entries(env)) {
+      if (key.includes("KEY") || key.includes("SECRET") || key.includes("TOKEN")) {
+        console.log(chalk.dim(`  ${key}=${maskSensitive(value)}`));
+      } else {
+        console.log(chalk.dim(`  ${key}=${value}`));
+      }
+    }
+  }
+  if (profile.model) {
+    console.log(chalk.bold("\nmodel:") + ` ${profile.model}`);
+  }
+  if (profile.fallbackModel) {
+    console.log(
+      chalk.bold("fallbackModel:") +
+        ` ${Array.isArray(profile.fallbackModel) ? profile.fallbackModel.join(", ") : profile.fallbackModel}`
+    );
+  }
+}
+
+function printProfileDetail(profile) {
+  console.log(chalk.bold("env:"));
+  const env = profile.env || {};
+  if (Object.keys(env).length === 0) {
+    console.log(chalk.dim("  (없음)"));
+  } else {
+    for (const [key, value] of Object.entries(env)) {
+      if (key.includes("KEY") || key.includes("SECRET") || key.includes("TOKEN")) {
+        console.log(chalk.dim(`  ${key}=${maskSensitive(value)}`));
+      } else {
+        console.log(chalk.dim(`  ${key}=${value}`));
+      }
+    }
+  }
+  if (profile.model) {
+    console.log(chalk.bold("\nmodel:") + ` ${profile.model}`);
+  }
+  if (profile.fallbackModel) {
+    console.log(
+      chalk.bold("fallbackModel:") +
+        ` ${Array.isArray(profile.fallbackModel) ? profile.fallbackModel.join(", ") : profile.fallbackModel}`
+    );
+  }
+}
+
+async function offerApply(name) {
+  const { doApply } = await inquirer.prompt([
+    {
+      type: "confirm",
+      name: "doApply",
+      message: `settings.json에 "${name}" 프로필을 지금 적용할까요?`,
+      default: true,
+    },
+  ]);
+  if (doApply) {
+    try {
+      const settings = manager.applyProfile(name);
+      printApplyResult(name, settings);
+    } catch (err) {
+      console.error(chalk.red(`오류: ${err.message}`));
+    }
+  }
+}
   console.log(chalk.green(`\n프로필 "${name}"이(가) 적용되었습니다.`));
   console.log(chalk.dim(`  settings.json: ${manager.getSettingsPath()}\n`));
 
@@ -156,6 +223,49 @@ program
   .action(() => showDashboard());
 
 program
+  .command("show <name>")
+  .description("프로필 상세 정보 표시")
+  .action((name) => {
+    const profile = manager.getProfile(name);
+    if (!profile) {
+      console.log(chalk.red(`프로필 "${name}"을(를) 찾을 수 없습니다.`));
+      return;
+    }
+    const activeName = manager.getActiveProfileName();
+    const marker = name === activeName ? chalk.green(" (active)") : "";
+    console.log(chalk.bold(`\n프로필: ${chalk.cyan(name)}${marker}\n`));
+    printProfileDetail(profile);
+    console.log();
+  });
+
+program
+  .command("capture <name>")
+  .description("현재 settings.json을 새 프로필로 저장")
+  .action((name) => {
+    try {
+      const profile = manager.captureProfile(name);
+      console.log(chalk.green(`\n프로필 "${name}"이(가) 저장되었습니다.`));
+      console.log(chalk.dim(`  settings.json: ${manager.getSettingsPath()}\n`));
+      printProfileDetail(profile);
+      console.log();
+    } catch (err) {
+      console.error(chalk.red(`오류: ${err.message}`));
+    }
+  });
+
+program
+  .command("copy <srcName> <dstName>")
+  .description("프로필 복제")
+  .action((srcName, dstName) => {
+    try {
+      manager.copyProfile(srcName, dstName);
+      console.log(chalk.green(`프로필 "${srcName}" → "${dstName}" 복제되었습니다.`));
+    } catch (err) {
+      console.error(chalk.red(`오류: ${err.message}`));
+    }
+  });
+
+program
   .command("add <name>")
   .description("새 API 프로필 추가")
   .action(async (name) => {
@@ -170,8 +280,8 @@ program
       console.log(chalk.bold(`\n새 프로필 "${name}" 설정:\n`));
       const { envVars, model, fallbackModel } = await promptForProfile();
       manager.addProfile(name, envVars, model, fallbackModel);
-      console.log(chalk.green(`\n프로필 "${name}"이(가) 저장되었습니다.`));
-      console.log(chalk.dim(`  cam apply ${name} 으로 적용하세요.\n`));
+      console.log(chalk.green(`\n프로필 "${name}"이(가) 저장되었습니다.\n`));
+      await offerApply(name);
     } catch (err) {
       console.error(chalk.red(`오류: ${err.message}`));
     }
@@ -192,6 +302,7 @@ program
       const { envVars, model, fallbackModel } = await promptForProfile(existing);
       manager.updateProfile(name, envVars, model, fallbackModel);
       console.log(chalk.green(`\n프로필 "${name}"이(가) 수정되었습니다.\n`));
+      await offerApply(name);
     } catch (err) {
       console.error(chalk.red(`오류: ${err.message}`));
     }
@@ -201,8 +312,25 @@ program
   .command("remove <name>")
   .alias("rm")
   .description("API 프로필 삭제")
-  .action((name) => {
+  .action(async (name) => {
     try {
+      const profile = manager.getProfile(name);
+      if (!profile) {
+        console.log(chalk.red(`프로필 "${name}"을(를) 찾을 수 없습니다.`));
+        return;
+      }
+      const { confirm } = await inquirer.prompt([
+        {
+          type: "confirm",
+          name: "confirm",
+          message: `프로필 "${name}"을(를) 정말 삭제할까요?`,
+          default: false,
+        },
+      ]);
+      if (!confirm) {
+        console.log(chalk.dim("취소되었습니다."));
+        return;
+      }
       manager.removeProfile(name);
       console.log(chalk.green(`프로필 "${name}"이(가) 삭제되었습니다.`));
     } catch (err) {

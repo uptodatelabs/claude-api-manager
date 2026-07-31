@@ -221,6 +221,40 @@ function importProfiles(filePath, overwrite = false) {
   return { imported, skipped };
 }
 
+function copyProfile(srcName, dstName) {
+  const data = readData();
+  if (!data.profiles[srcName]) {
+    throw new Error(`Profile "${srcName}" not found`);
+  }
+  if (data.profiles[dstName]) {
+    throw new Error(`Profile "${dstName}" already exists`);
+  }
+  data.profiles[dstName] = JSON.parse(JSON.stringify(data.profiles[srcName]));
+  writeData(data);
+  return data.profiles[dstName];
+}
+
+function captureProfile(name) {
+  const data = readData();
+  if (data.profiles[name]) {
+    throw new Error(`Profile "${name}" already exists`);
+  }
+
+  const settings = readSettings();
+  if (!settings) {
+    throw new Error(`settings.json not found at ${getSettingsPath()}`);
+  }
+
+  const profile = {};
+  if (settings.env) profile.env = { ...settings.env };
+  if (settings.model) profile.model = settings.model;
+  if (settings.fallbackModel) profile.fallbackModel = settings.fallbackModel;
+
+  data.profiles[name] = profile;
+  writeData(data);
+  return profile;
+}
+
 module.exports = {
   readData,
   writeData,
@@ -239,4 +273,6 @@ module.exports = {
   getDataPath,
   exportProfiles,
   importProfiles,
+  copyProfile,
+  captureProfile,
 };
