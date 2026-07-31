@@ -25,7 +25,21 @@ function readData() {
     fs.writeFileSync(DATA_FILE, JSON.stringify(initial, null, 2), "utf-8");
     return initial;
   }
-  return JSON.parse(fs.readFileSync(DATA_FILE, "utf-8"));
+  try {
+    const data = JSON.parse(fs.readFileSync(DATA_FILE, "utf-8"));
+    return {
+      profiles: data.profiles || {},
+      activeProfile: data.activeProfile ?? null,
+      settingsPath: data.settingsPath ?? null,
+    };
+  } catch {
+    const backupPath = DATA_FILE + ".corrupt-" + Date.now();
+    fs.copyFileSync(DATA_FILE, backupPath);
+    const initial = { profiles: {}, activeProfile: null, settingsPath: null };
+    fs.writeFileSync(DATA_FILE, JSON.stringify(initial, null, 2), "utf-8");
+    console.error(`Warning: apis.json is corrupted. Backed up to ${backupPath}`);
+    return initial;
+  }
 }
 
 function writeData(data) {
@@ -61,6 +75,10 @@ function writeSettings(settings) {
   const dir = path.dirname(settingsPath);
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
+  }
+  if (fs.existsSync(settingsPath)) {
+    const backupPath = settingsPath + ".bak";
+    fs.copyFileSync(settingsPath, backupPath);
   }
   fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2), "utf-8");
 }
@@ -131,9 +149,13 @@ function applyProfile(name) {
 
   if (profile.model) {
     settings.model = profile.model;
+  } else {
+    delete settings.model;
   }
   if (profile.fallbackModel) {
     settings.fallbackModel = profile.fallbackModel;
+  } else {
+    delete settings.fallbackModel;
   }
 
   writeSettings(settings);
