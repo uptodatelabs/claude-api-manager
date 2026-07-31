@@ -118,22 +118,14 @@ function printApplyResult(name, settings) {
 }
 
 async function showDashboard() {
-  const profiles = manager.listProfiles();
-
-  if (profiles.length === 0) {
-    console.log(chalk.yellow("\n저장된 프로필이 없습니다."));
-    console.log(chalk.dim("  cam add <name> 으로 새 프로필을 추가하세요.\n"));
-    return;
-  }
-
-  const activeName = manager.getActiveProfileName();
-
   console.log(chalk.bold("\n  Claude API Manager Dashboard\n"));
 
   let running = true;
   while (running) {
+    const profiles = manager.listProfiles();
     const currentActive = manager.getActiveProfileName();
-    const choices = profiles.map((p) => {
+
+    const mainChoices = profiles.map((p) => {
       const isActive = p.name === currentActive;
       const marker = isActive ? chalk.green(" ●") : chalk.dim(" ○");
       const summary = getProfileSummary(p);
@@ -143,15 +135,15 @@ async function showDashboard() {
       };
     });
 
-    choices.push(new inquirer.Separator());
-    choices.push({ name: chalk.dim("  종료"), value: "__exit__" });
+    mainChoices.push(new inquirer.Separator());
+    mainChoices.push({ name: chalk.dim("  종료"), value: "__exit__" });
 
     const { selected } = await inquirer.prompt([
       {
         type: "list",
         name: "selected",
-        message: "적용할 프로필을 선택하세요 (화살표 키로 이동, Enter로 적용):",
-        choices,
+        message: "프로필을 선택하세요:",
+        choices: mainChoices,
         pageSize: 15,
       },
     ]);
@@ -159,11 +151,90 @@ async function showDashboard() {
     if (selected === "__exit__") {
       running = false;
     } else {
-      try {
-        const settings = manager.applyProfile(selected);
-        printApplyResult(selected, settings);
-      } catch (err) {
-        console.error(chalk.red(`오류: ${err.message}`));
+      let actionDone = false;
+      while (!actionDone) {
+        const profile = manager.getProfile(selected);
+        const isActive = selected === manager.getActiveProfileName();
+        const marker = isActive ? chalk.green(" (active)") : "";
+
+        const { action } = await inquirer.prompt([
+          {
+            type: "list",
+            name: "action",
+            message: `${chalk.cyan(selected)}${marker} - 실행할 작업:`,
+            choices: [
+              { name: "  적용 (apply)", value: "apply" },
+              { name: "  상세 보기 (show)", value: "show" },
+              { name: "  수정 (edit)", value: "edit" },
+              { name: "  복제 (copy)", value: "copy" },
+              { name: "  삭제 (remove)", value: "remove" },
+              new inquirer.Separator(),
+              { name: chalk.dim("  뒤로"), value: "__back__" },
+            ],
+          },
+        ]);
+
+        if (action === "__back__") {
+          actionDone = true;
+        } else if (action === "apply") {
+          try {
+            const settings = manager.applyProfile(selected);
+            printApplyResult(selected, settings);
+          } catch (err) {
+            console.error(chalk.red(`오류: ${err.message}`));
+          }
+          actionDone = true;
+        } else if (action === "show") {
+          const activeName = manager.getActiveProfileName();
+          const m = selected === activeName ? chalk.green(" (active)") : "";
+          console.log(chalk.bold(`\n프로필: ${chalk.cyan(selected)}${m}\n`));
+          printProfileDetail(profile);
+          console.log();
+        } else if (action === "edit") {
+          try {
+            console.log(chalk.bold(`\n프로필 "${selected}" 수정:\n`));
+            const { envVars, model, fallbackModel } = await promptForProfile(profile);
+            manager.updateProfile(selected, envVars, model, fallbackModel);
+            console.log(chalk.green(`\n프로필 "${selected}"이(가) 수정되었습니다.\n`));
+            await offerApply(selected);
+          } catch (err) {
+            console.error(chalk.red(`오류: ${err.message}`));
+          }
+          actionDone = true;
+        } else if (action === "copy") {
+          const { dstName } = await inquirer.prompt([
+            {
+              type: "input",
+              name: "dstName",
+              message: "새 프로필 이름:",
+              validate: (v) => (v.trim() ? true : "이름은 필수입니다"),
+            },
+          ]);
+          try {
+            manager.copyProfile(selected, dstName.trim());
+            console.log(chalk.green(`"${selected}" → "${dstName.trim()}" 복제되었습니다.`));
+          } catch (err) {
+            console.error(chalk.red(`오류: ${err.message}`));
+          }
+        } else if (action === "remove") {
+          const { confirm } = await inquirer.prompt([
+            {
+              type: "confirm",
+              name: "confirm",
+              message: `프로필 "${selected}"을(를) 정말 삭제할까요?`,
+              default: false,
+            },
+          ]);
+          if (confirm) {
+            try {
+              manager.removeProfile(selected);
+              console.log(chalk.green(`"${selected}"이(가) 삭제되었습니다.`));
+              actionDone = true;
+            } catch (err) {
+              console.error(chalk.red(`오류: ${err.message}`));
+            }
+          }
+        }
       }
     }
   }
@@ -221,7 +292,7 @@ program
 program
   .command("select")
   .alias("s")
-  .description("대시보드에서 프로필 선택 및 적용")
+  .description("대시보드에서 프로필 선택 및 작업 실행")
   .action(() => showDashboard());
 
 program
