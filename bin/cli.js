@@ -92,6 +92,8 @@ async function offerApply(name) {
     }
   }
 }
+
+function printApplyResult(name, settings) {
   console.log(chalk.green(`\n프로필 "${name}"이(가) 적용되었습니다.`));
   console.log(chalk.dim(`  settings.json: ${manager.getSettingsPath()}\n`));
 
