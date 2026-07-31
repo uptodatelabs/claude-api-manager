@@ -27,20 +27,42 @@ cam select
 # 프로필 목록 확인
 cam list
 
-# 새 프로필 추가 (대화형)
+# 새 프로필 추가 (대화형, 적용 여부 확인 후 적용)
 cam add work
 
-# 프로필 수정
+# 프로필 수정 (적용 여부 확인 후 적용)
 cam edit work
 
-# 프로필 삭제
-cam remove work
-
-# 프로필 적용
-cam apply work
+# 프로필 상세 보기
+cam show work
 
 # 현재 활성 프로필 확인
 cam current
+
+# 프로필 삭제 (확인 프롬프트)
+cam remove work
+
+# 프로필 복제
+cam copy work work2
+
+# settings.json 변경 없이 특정 프로필 적용
+cam apply work
+```
+
+### 설정 동기화
+
+```bash
+# 현재 settings.json을 새 프로필로 저장
+cam capture imported-settings
+
+# 모든 프로필 내보내기
+cam export backup.json
+
+# 프로필 가져오기 (중복 건너뜀)
+cam import backup.json
+
+# 기존 프로필 덮어쓰며 가져오기
+cam import -f backup.json
 ```
 
 ### 설정 파일
@@ -52,19 +74,6 @@ cam config
 # settings.json 경로 확인/변경
 cam path
 cam path -s "C:\custom\path\settings.json"
-```
-
-### 가져오기/내보내기
-
-```bash
-# 모든 프로필 내보내기
-cam export backup.json
-
-# 프로필 가져오기 (중복 건너뜀)
-cam import backup.json
-
-# 기존 프로필 덮어쓰며 가져오기
-cam import -f backup.json
 ```
 
 ## 지원 공급자
@@ -84,7 +93,12 @@ cam import -f backup.json
 
 ## 동작 방식
 
-`apply` 명령어는 `settings.json`의 `env` 섹션만 교체합니다. 기존 설정(hooks, permissions 등)은 보존됩니다.
+- `apply` 명령어는 `settings.json`의 `env` 섹션만 교체합니다. `model`, `fallbackModel`도 새 프로필의 값으로 교체하고, 없는 경우 기존 값을 제거합니다.
+- `capture` 명령어는 현재 `settings.json`의 내용을 새 프로필로 저장합니다.
+- `add`/`edit` 완료 후 settings.json 적용 여부를 선택할 수 있습니다.
+- `remove` 시 확인 프롬프트가 표시됩니다.
+- `settings.json` 저장 시 백업 파일(`settings.json.bak`)을 생성합니다.
+- 커스텀 환경변수(`KEY=VALUE`)를 추가할 수 있습니다.
 
 ## 라이선스
 
