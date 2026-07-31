@@ -264,7 +264,88 @@ async function promptForProfile(existingProfile) {
         .filter(Boolean)
     : null;
 
+  // 커스텀 env 반복 입력
+  const existingCustomKeys = Object.keys(envVars).filter(
+    (key) => !isKnownEnvKey(key)
+  );
+  if (existingCustomKeys.length > 0) {
+    console.log("  기존 커스텀 env:");
+    for (const key of existingCustomKeys) {
+      console.log(`    ${key}=${envVars[key]}`);
+    }
+  }
+
+  const { addCustomEnv } = await inquirer.prompt([
+    {
+      type: "confirm",
+      name: "addCustomEnv",
+      message: "추가할 커스텀 환경변수가 있습니까? (예: API_TIMEOUT_MS)",
+      default: existingCustomKeys.length > 0,
+    },
+  ]);
+
+  if (addCustomEnv) {
+    let addingMore = true;
+    while (addingMore) {
+      const { customKey, customValue, more } = await inquirer.prompt([
+        {
+          type: "input",
+          name: "customKey",
+          message: "환경변수 이름 (예: API_TIMEOUT_MS):",
+          validate: (v) => (v.trim() ? true : "이름은 필수입니다"),
+        },
+        {
+          type: "input",
+          name: "customValue",
+          message: "값:",
+          validate: (v) => (v.trim() ? true : "값은 필수입니다"),
+        },
+        {
+          type: "confirm",
+          name: "more",
+          message: "더 추가하시겠습니까?",
+          default: false,
+        },
+      ]);
+      envVars[customKey.trim()] = customValue.trim();
+      addingMore = more;
+    }
+  }
+
   return { envVars, model, fallbackModel: fallbackModel && fallbackModel.length ? fallbackModel : null };
+}
+
+const KNOWN_ENV_KEYS = new Set([
+  "ANTHROPIC_API_KEY",
+  "ANTHROPIC_AUTH_TOKEN",
+  "ANTHROPIC_BASE_URL",
+  "ANTHROPIC_MODEL",
+  "ANTHROPIC_DEFAULT_OPUS_MODEL",
+  "ANTHROPIC_DEFAULT_SONNET_MODEL",
+  "ANTHROPIC_DEFAULT_HAIKU_MODEL",
+  "CLAUDE_CODE_USE_BEDROCK",
+  "AWS_REGION",
+  "ANTHROPIC_BEDROCK_BASE_URL",
+  "ANTHROPIC_BEDROCK_SERVICE_TIER",
+  "AWS_ACCESS_KEY_ID",
+  "AWS_SECRET_ACCESS_KEY",
+  "AWS_SESSION_TOKEN",
+  "CLAUDE_CODE_USE_VERTEX",
+  "CLOUD_ML_REGION",
+  "ANTHROPIC_VERTEX_PROJECT_ID",
+  "ANTHROPIC_VERTEX_BASE_URL",
+  "CLAUDE_CODE_USE_FOUNDRY",
+  "ANTHROPIC_FOUNDRY_RESOURCE",
+  "ANTHROPIC_FOUNDRY_BASE_URL",
+  "ANTHROPIC_FOUNDRY_API_KEY",
+  "ANTHROPIC_FOUNDRY_AUTH_TOKEN",
+  "ANTHROPIC_AWS_WORKSPACE_ID",
+  "ANTHROPIC_AWS_API_KEY",
+  "ANTHROPIC_AWS_BASE_URL",
+]);
+
+function isKnownEnvKey(key) {
+  return KNOWN_ENV_KEYS.has(key);
 }
 
 function detectProvider(envVars) {
