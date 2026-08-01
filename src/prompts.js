@@ -303,22 +303,52 @@ async function promptForProfile(existingProfile) {
   }
 
   // 커스텀 env 반복 입력
-  const existingCustomKeys = Object.keys(envVars).filter(
+  // 수정 모드: 기존 커스텀 env를 먼저 표시/수정
+  const existingCustomKeys = Object.keys(existingEnv).filter(
     (key) => !isKnownEnvKey(key)
   );
+
   if (existingCustomKeys.length > 0) {
-    console.log("  기존 커스텀 env:");
+    console.log(chalk.bold("\n  기존 커스텀 환경변수:"));
     for (const key of existingCustomKeys) {
-      console.log(`    ${key}=${envVars[key]}`);
+      const { action } = await inquirer.prompt([
+        {
+          type: "list",
+          name: "action",
+          message: `${key}=${existingEnv[key]} — 작업 선택:`,
+          choices: [
+            { name: "  유지", value: "keep" },
+            { name: "  값 수정", value: "edit" },
+            { name: "  삭제", value: "delete" },
+          ],
+        },
+      ]);
+
+      if (action === "keep") {
+        envVars[key] = existingEnv[key];
+      } else if (action === "edit") {
+        const { newValue } = await inquirer.prompt([
+          {
+            type: "input",
+            name: "newValue",
+            message: `${key} 새 값:`,
+            default: existingEnv[key],
+            validate: (v) => (v.trim() ? true : "값은 필수입니다"),
+          },
+        ]);
+        envVars[key] = newValue.trim();
+      }
+      // action === "delete" → envVars에 추가하지 않음
     }
   }
 
+  // 새 커스텀 env 추가
   const { addCustomEnv } = await inquirer.prompt([
     {
       type: "confirm",
       name: "addCustomEnv",
-      message: "추가할 커스텀 환경변수가 있습니까? (예: API_TIMEOUT_MS)",
-      default: existingCustomKeys.length > 0,
+      message: "새 커스텀 환경변수를 추가하시겠습니까? (예: API_TIMEOUT_MS)",
+      default: false,
     },
   ]);
 
