@@ -59,6 +59,13 @@ function printProfileDetail(profile) {
 }
 
 async function offerApply(name) {
+  const profile = manager.getProfile(name);
+  const current = manager.readSettings();
+
+  if (current && profile) {
+    showDiff(profile, current);
+  }
+
   const { doApply } = await inquirer.prompt([
     {
       type: "confirm",
@@ -75,6 +82,61 @@ async function offerApply(name) {
       console.error(chalk.red(`오류: ${err.message}`));
     }
   }
+}
+
+function showDiff(profile, current) {
+  const currentEnv = current.env || {};
+  const profileEnv = profile.env || {};
+
+  const added = [];
+  const removed = [];
+  const changed = [];
+
+  for (const [key, value] of Object.entries(profileEnv)) {
+    if (!(key in currentEnv)) {
+      added.push(key);
+    } else if (currentEnv[key] !== value) {
+      changed.push(key);
+    }
+  }
+  for (const key of Object.keys(currentEnv)) {
+    if (!(key in profileEnv)) {
+      removed.push(key);
+    }
+  }
+
+  const modelChanges = [];
+  if (profile.model !== undefined && profile.model !== current.model) {
+    modelChanges.push(
+      `  model: ${current.model || "(없음)"} → ${profile.model || "(없음)"}`
+    );
+  }
+  if (profile.fallbackModel !== undefined) {
+    const cur = JSON.stringify(current.fallbackModel || null);
+    const next = JSON.stringify(profile.fallbackModel || null);
+    if (cur !== next) {
+      modelChanges.push(
+        `  fallbackModel: ${cur} → ${next}`
+      );
+    }
+  }
+
+  if (
+    added.length === 0 &&
+    removed.length === 0 &&
+    changed.length === 0 &&
+    modelChanges.length === 0
+  ) {
+    console.log(chalk.dim("\n  diff: 변경 사항 없음\n"));
+    return;
+  }
+
+  console.log(chalk.bold("\n  변경 예정:"));
+  for (const k of added) console.log(chalk.green(`    + ${k}`));
+  for (const k of removed) console.log(chalk.red(`    - ${k}`));
+  for (const k of changed) console.log(chalk.yellow(`    ~ ${k}`));
+  for (const line of modelChanges) console.log(chalk.yellow(line));
+  console.log();
 }
 
 function printApplyResult(name, settings) {
