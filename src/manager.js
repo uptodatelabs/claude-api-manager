@@ -97,7 +97,7 @@ function getProfile(name) {
   return data.profiles[name] || null;
 }
 
-function addProfile(name, envVars, model, fallbackModel) {
+function addProfile(name, envVars, model, fallbackModel, description = null, tags = null) {
   const data = readData();
   if (data.profiles[name]) {
     throw new Error(`Profile "${name}" already exists`);
@@ -105,20 +105,46 @@ function addProfile(name, envVars, model, fallbackModel) {
   data.profiles[name] = { env: envVars };
   if (model) data.profiles[name].model = model;
   if (fallbackModel) data.profiles[name].fallbackModel = fallbackModel;
+  if (description) data.profiles[name].description = description;
+  if (tags && tags.length > 0) data.profiles[name].tags = tags;
   writeData(data);
   return data.profiles[name];
 }
 
-function updateProfile(name, envVars, model, fallbackModel) {
+function updateProfile(name, envVars, model, fallbackModel, description = null, tags = null) {
   const data = readData();
   if (!data.profiles[name]) {
     throw new Error(`Profile "${name}" not found`);
   }
+  const existing = data.profiles[name];
   data.profiles[name] = { env: envVars };
   if (model) data.profiles[name].model = model;
   if (fallbackModel) data.profiles[name].fallbackModel = fallbackModel;
+  // description/tags가 명시적으로 null로 전달되면 기존 값 유지
+  if (description !== null) data.profiles[name].description = description;
+  else if (existing.description) data.profiles[name].description = existing.description;
+  if (tags !== null && tags.length > 0) data.profiles[name].tags = tags;
+  else if (existing.tags && existing.tags.length > 0)
+    data.profiles[name].tags = existing.tags;
   writeData(data);
   return data.profiles[name];
+}
+
+function renameProfile(oldName, newName) {
+  const data = readData();
+  if (!data.profiles[oldName]) {
+    throw new Error(`Profile "${oldName}" not found`);
+  }
+  if (data.profiles[newName]) {
+    throw new Error(`Profile "${newName}" already exists`);
+  }
+  data.profiles[newName] = data.profiles[oldName];
+  delete data.profiles[oldName];
+  if (data.activeProfile === oldName) {
+    data.activeProfile = newName;
+  }
+  writeData(data);
+  return data.profiles[newName];
 }
 
 function removeProfile(name) {
@@ -275,4 +301,5 @@ module.exports = {
   importProfiles,
   copyProfile,
   captureProfile,
+  renameProfile,
 };

@@ -310,6 +310,18 @@ program
   });
 
 program
+  .command("rename <oldName> <newName>")
+  .description("프로필 이름 변경")
+  .action(async (oldName, newName) => {
+    try {
+      manager.renameProfile(oldName, newName);
+      console.log(chalk.green(`"${oldName}" → "${newName}" 이름 변경됨`));
+    } catch (err) {
+      console.error(chalk.red(`오류: ${err.message}`));
+    }
+  });
+
+program
   .command("copy <srcName> <dstName>")
   .description("프로필 복제")
   .action((srcName, dstName) => {
