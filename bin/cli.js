@@ -261,6 +261,9 @@ program
       const provider = detectProvider(p.env);
       const providerLabel = PROVIDERS.find((pr) => pr.value === provider)?.name || provider;
       console.log(`  ${chalk.cyan(p.name)}${marker}`);
+      if (p.description) {
+        console.log(chalk.dim(`    ${p.description}`));
+      }
       console.log(chalk.dim(`    공급자: ${providerLabel}`));
       if (p.env.ANTHROPIC_API_KEY) {
         const key = p.env.ANTHROPIC_API_KEY;
@@ -277,6 +280,13 @@ program
       }
       if (p.model) {
         console.log(chalk.dim(`    Model: ${p.model}`));
+      }
+      if (p.tags && p.tags.length > 0) {
+        console.log(chalk.dim(`    태그: ${p.tags.join(", ")}`));
+      }
+      if (p.lastApplied) {
+        const count = p.applyCount ? ` (${p.applyCount}회)` : "";
+        console.log(chalk.dim(`    마지막 적용: ${p.lastApplied}${count}`));
       }
       console.log();
     }

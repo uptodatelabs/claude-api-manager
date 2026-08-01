@@ -187,6 +187,8 @@ function applyProfile(name) {
   writeSettings(settings);
 
   data.activeProfile = name;
+  data.profiles[name].lastApplied = new Date().toISOString();
+  data.profiles[name].applyCount = (data.profiles[name].applyCount || 0) + 1;
   writeData(data);
 
   return settings;
