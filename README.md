@@ -13,7 +13,7 @@ npm link
 
 ## 사용법
 
-### 대시보드 (화살표 키로 선택)
+### 대시보드 (화살표 키로 선택 + 인라인 검색)
 
 ```bash
 cam
@@ -21,11 +21,20 @@ cam
 cam select
 ```
 
+대시보드 진입 후:
+- 화살표/타이핑으로 프로필 필터링
+- Enter로 선택
+- 그 후 작업 메뉴: 적용 / 상세 / 수정 / 복제 / 삭제 / 뒤로
+
 ### 프로필 관리
 
 ```bash
-# 프로필 목록 확인
+# 프로필 목록 (태그 필터 가능)
 cam list
+cam list -t ollama
+
+# 프로필 상세 보기
+cam show work
 
 # 새 프로필 추가 (대화형, 적용 여부 확인 후 적용)
 cam add work
@@ -33,21 +42,29 @@ cam add work
 # 프로필 수정 (적용 여부 확인 후 적용)
 cam edit work
 
-# 프로필 상세 보기
-cam show work
-
-# 현재 활성 프로필 확인
-cam current
-
-# 프로필 삭제 (확인 프롬프트)
-cam remove work
+# 프로필 이름 변경
+cam rename old-name new-name
 
 # 프로필 복제
 cam copy work work2
 
-# settings.json 변경 없이 특정 프로필 적용
+# 프로필 삭제 (확인 프롬프트)
+cam remove work
+
+# settings.json 변경 없이 특정 프로필 적용 (diff 미리보기 후 확인)
 cam apply work
+
+# 현재 활성 프로필 확인
+cam current
 ```
+
+### 프로필 메타데이터
+
+각 프로필은 다음을 가질 수 있습니다:
+- **description**: 용도/메모 (선택)
+- **tags**: 쉼표 구분 태그 (예: `work,proxy,ollama`) - 검색과 필터에 사용
+- **lastApplied**: 마지막 적용 시각 (자동 기록)
+- **applyCount**: 누적 적용 횟수 (자동 기록)
 
 ### 설정 동기화
 
@@ -94,10 +111,12 @@ cam path -s "C:\custom\path\settings.json"
 ## 동작 방식
 
 - `apply` 명령어는 `settings.json`의 `env` 섹션만 교체합니다. `model`, `fallbackModel`도 새 프로필의 값으로 교체하고, 없는 경우 기존 값을 제거합니다.
+- `apply` 직전 diff 미리보기로 추가(+)/삭제(-)/변경(~) 표시.
 - `capture` 명령어는 현재 `settings.json`의 내용을 새 프로필로 저장합니다.
 - `add`/`edit` 완료 후 settings.json 적용 여부를 선택할 수 있습니다.
 - `remove` 시 확인 프롬프트가 표시됩니다.
 - `settings.json` 저장 시 백업 파일(`settings.json.bak`)을 생성합니다.
+- 프로필 수정 시 값 삭제: `-` 입력 후 Enter.
 - 커스텀 환경변수(`KEY=VALUE`)를 추가할 수 있습니다.
 
 ## 라이선스
