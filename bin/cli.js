@@ -25,7 +25,16 @@ function getProfileSummary(profile) {
 }
 
 function printProfileDetail(profile) {
-  console.log(chalk.bold("env:"));
+  if (profile.description) {
+    console.log(chalk.bold("설명:") + ` ${profile.description}`);
+  }
+  if (profile.tags && profile.tags.length > 0) {
+    console.log(chalk.bold("태그:") + ` ${profile.tags.join(", ")}`);
+  }
+  if (profile.lastApplied) {
+    console.log(chalk.bold("마지막 적용:") + ` ${profile.lastApplied}`);
+  }
+  console.log(chalk.bold("\nenv:"));
   const env = profile.env || {};
   if (Object.keys(env).length === 0) {
     console.log(chalk.dim("  (없음)"));
@@ -178,8 +187,9 @@ async function handleProfileAction(selected) {
     } else if (action === "edit") {
       try {
         console.log(chalk.bold(`\n프로필 "${selected}" 수정:\n`));
-        const { envVars, model, fallbackModel } = await promptForProfile(profile);
-        manager.updateProfile(selected, envVars, model, fallbackModel);
+        const { envVars, model, fallbackModel, description, tags } =
+          await promptForProfile(profile);
+        manager.updateProfile(selected, envVars, model, fallbackModel, description, tags);
         console.log(chalk.green(`\n프로필 "${selected}"이(가) 수정되었습니다.\n`));
         await offerApply(selected);
       } catch (err) {
@@ -346,8 +356,9 @@ program
       }
 
       console.log(chalk.bold(`\n새 프로필 "${name}" 설정:\n`));
-      const { envVars, model, fallbackModel } = await promptForProfile();
-      manager.addProfile(name, envVars, model, fallbackModel);
+      const { envVars, model, fallbackModel, description, tags } =
+        await promptForProfile();
+      manager.addProfile(name, envVars, model, fallbackModel, description, tags);
       console.log(chalk.green(`\n프로필 "${name}"이(가) 저장되었습니다.\n`));
       await offerApply(name);
     } catch (err) {
@@ -367,8 +378,9 @@ program
       }
 
       console.log(chalk.bold(`\n프로필 "${name}" 수정:\n`));
-      const { envVars, model, fallbackModel } = await promptForProfile(existing);
-      manager.updateProfile(name, envVars, model, fallbackModel);
+      const { envVars, model, fallbackModel, description, tags } =
+        await promptForProfile(existing);
+      manager.updateProfile(name, envVars, model, fallbackModel, description, tags);
       console.log(chalk.green(`\n프로필 "${name}"이(가) 수정되었습니다.\n`));
       await offerApply(name);
     } catch (err) {

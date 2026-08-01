@@ -380,7 +380,52 @@ async function promptForProfile(existingProfile) {
     }
   }
 
-  return { envVars, model, fallbackModel: fallbackModel && fallbackModel.length ? fallbackModel : null };
+  // description / tags 입력
+  const existingDesc = existingProfile ? existingProfile.description || "" : "";
+  const existingTags = existingProfile
+    ? existingProfile.tags
+      ? existingProfile.tags.join(", ")
+      : ""
+    : "";
+
+  const descTags = await inquirer.prompt([
+    {
+      type: "input",
+      name: "description",
+      message: `설명${hintDelete(isEdit, existingDesc)} (선택, 이 프로필의 용도/메모):`,
+      default: existingDesc,
+      transformer: (v) => deleteTransformer(v, isEdit),
+    },
+    {
+      type: "input",
+      name: "tags",
+      message: `태그${hintDelete(isEdit, existingTags)} (쉼표 구분, 예: work, proxy, ollama):`,
+      default: existingTags,
+      transformer: (v) => deleteTransformer(v, isEdit),
+    },
+  ]);
+
+  let description = null;
+  if (descTags.description && descTags.description.trim() && descTags.description.trim() !== "-") {
+    description = descTags.description.trim();
+  }
+
+  let tags = null;
+  if (descTags.tags && descTags.tags.trim() && descTags.tags.trim() !== "-") {
+    tags = descTags.tags
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+    if (tags.length === 0) tags = null;
+  }
+
+  return {
+    envVars,
+    model,
+    fallbackModel: fallbackModel && fallbackModel.length ? fallbackModel : null,
+    description,
+    tags,
+  };
 }
 
 const KNOWN_ENV_KEYS = new Set([
