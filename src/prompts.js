@@ -11,10 +11,6 @@ function deleteTransformer(value, isEdit) {
   return value;
 }
 
-function deleteFilter(value) {
-  return value === "-" ? "" : value;
-}
-
 const PROVIDERS = [
   { name: "Anthropic API (기본)", value: "anthropic" },
   { name: "Amazon Bedrock", value: "bedrock" },
@@ -59,7 +55,6 @@ async function promptForProfile(existingProfile) {
         message: `ANTHROPIC_API_KEY${hintDelete(isEdit, existingEnv.ANTHROPIC_API_KEY)} (없으면 엔터):`,
         default: existingEnv.ANTHROPIC_API_KEY || "",
         transformer: (v) => deleteTransformer(v, isEdit),
-        filter: deleteFilter,
       },
       {
         type: "input",
@@ -67,7 +62,6 @@ async function promptForProfile(existingProfile) {
         message: `ANTHROPIC_AUTH_TOKEN${hintDelete(isEdit, existingEnv.ANTHROPIC_AUTH_TOKEN)} (Bearer 토큰, 없으면 엔터):`,
         default: existingEnv.ANTHROPIC_AUTH_TOKEN || "",
         transformer: (v) => deleteTransformer(v, isEdit),
-        filter: deleteFilter,
         validate: (v, answers) => {
           if (!v.trim() && !answers.ANTHROPIC_API_KEY && !apiKeyValue) {
             return "ANTHROPIC_API_KEY 또는 ANTHROPIC_AUTH_TOKEN 중至少 하나는 필수입니다";
@@ -81,7 +75,6 @@ async function promptForProfile(existingProfile) {
         message: `ANTHROPIC_BASE_URL${hintDelete(isEdit, existingEnv.ANTHROPIC_BASE_URL)} (프록시/게이트웨이, 없으면 엔터):`,
         default: existingEnv.ANTHROPIC_BASE_URL || "",
         transformer: (v) => deleteTransformer(v, isEdit),
-        filter: deleteFilter,
       }
     );
   } else if (provider === "bedrock") {
@@ -92,7 +85,6 @@ async function promptForProfile(existingProfile) {
         message: `AWS_REGION${hintDelete(isEdit, existingEnv.AWS_REGION)}:`,
         default: existingEnv.AWS_REGION || "us-east-1",
         transformer: (v) => deleteTransformer(v, isEdit),
-        filter: deleteFilter,
         validate: (v) => (v.trim() ? true : "AWS Region은 필수입니다"),
       },
       {
@@ -101,7 +93,6 @@ async function promptForProfile(existingProfile) {
         message: `ANTHROPIC_BEDROCK_BASE_URL${hintDelete(isEdit, existingEnv.ANTHROPIC_BEDROCK_BASE_URL)} (게이트웨이, 없으면 엔터):`,
         default: existingEnv.ANTHROPIC_BEDROCK_BASE_URL || "",
         transformer: (v) => deleteTransformer(v, isEdit),
-        filter: deleteFilter,
       },
       {
         type: "list",
@@ -120,7 +111,6 @@ async function promptForProfile(existingProfile) {
         message: `AWS_ACCESS_KEY_ID${hintDelete(isEdit, existingEnv.AWS_ACCESS_KEY_ID)} (자격증명 체인 사용 시 엔터):`,
         default: existingEnv.AWS_ACCESS_KEY_ID || "",
         transformer: (v) => deleteTransformer(v, isEdit),
-        filter: deleteFilter,
       },
       {
         type: "input",
@@ -128,7 +118,6 @@ async function promptForProfile(existingProfile) {
         message: `AWS_SECRET_ACCESS_KEY${hintDelete(isEdit, existingEnv.AWS_SECRET_ACCESS_KEY)} (자격증명 체인 사용 시 엔터):`,
         default: existingEnv.AWS_SECRET_ACCESS_KEY || "",
         transformer: (v) => deleteTransformer(v, isEdit),
-        filter: deleteFilter,
       },
       {
         type: "input",
@@ -136,7 +125,6 @@ async function promptForProfile(existingProfile) {
         message: `AWS_SESSION_TOKEN${hintDelete(isEdit, existingEnv.AWS_SESSION_TOKEN)} (없으면 엔터):`,
         default: existingEnv.AWS_SESSION_TOKEN || "",
         transformer: (v) => deleteTransformer(v, isEdit),
-        filter: deleteFilter,
       }
     );
   } else if (provider === "vertex") {
@@ -147,7 +135,6 @@ async function promptForProfile(existingProfile) {
         message: `CLOUD_ML_REGION${hintDelete(isEdit, existingEnv.CLOUD_ML_REGION)}:`,
         default: existingEnv.CLOUD_ML_REGION || "us-east5",
         transformer: (v) => deleteTransformer(v, isEdit),
-        filter: deleteFilter,
         validate: (v) => (v.trim() ? true : "Region은 필수입니다"),
       },
       {
@@ -156,7 +143,6 @@ async function promptForProfile(existingProfile) {
         message: `ANTHROPIC_VERTEX_PROJECT_ID${hintDelete(isEdit, existingEnv.ANTHROPIC_VERTEX_PROJECT_ID)}:`,
         default: existingEnv.ANTHROPIC_VERTEX_PROJECT_ID || "",
         transformer: (v) => deleteTransformer(v, isEdit),
-        filter: deleteFilter,
         validate: (v) => (v.trim() ? true : "Project ID는 필수입니다"),
       },
       {
@@ -165,7 +151,6 @@ async function promptForProfile(existingProfile) {
         message: `ANTHROPIC_VERTEX_BASE_URL${hintDelete(isEdit, existingEnv.ANTHROPIC_VERTEX_BASE_URL)} (게이트웨이, 없으면 엔터):`,
         default: existingEnv.ANTHROPIC_VERTEX_BASE_URL || "",
         transformer: (v) => deleteTransformer(v, isEdit),
-        filter: deleteFilter,
       }
     );
   } else if (provider === "foundry") {
@@ -176,7 +161,6 @@ async function promptForProfile(existingProfile) {
         message: `ANTHROPIC_FOUNDRY_RESOURCE${hintDelete(isEdit, existingEnv.ANTHROPIC_FOUNDRY_RESOURCE)} (URL 미설정 시 필수):`,
         default: existingEnv.ANTHROPIC_FOUNDRY_RESOURCE || "",
         transformer: (v) => deleteTransformer(v, isEdit),
-        filter: deleteFilter,
       },
       {
         type: "input",
@@ -184,7 +168,6 @@ async function promptForProfile(existingProfile) {
         message: `ANTHROPIC_FOUNDRY_BASE_URL${hintDelete(isEdit, existingEnv.ANTHROPIC_FOUNDRY_BASE_URL)} (없으면 엔터):`,
         default: existingEnv.ANTHROPIC_FOUNDRY_BASE_URL || "",
         transformer: (v) => deleteTransformer(v, isEdit),
-        filter: deleteFilter,
       },
       {
         type: "input",
@@ -192,7 +175,6 @@ async function promptForProfile(existingProfile) {
         message: `ANTHROPIC_FOUNDRY_API_KEY${hintDelete(isEdit, existingEnv.ANTHROPIC_FOUNDRY_API_KEY)} (없으면 엔터):`,
         default: existingEnv.ANTHROPIC_FOUNDRY_API_KEY || "",
         transformer: (v) => deleteTransformer(v, isEdit),
-        filter: deleteFilter,
       },
       {
         type: "input",
@@ -200,7 +182,6 @@ async function promptForProfile(existingProfile) {
         message: `ANTHROPIC_FOUNDRY_AUTH_TOKEN${hintDelete(isEdit, existingEnv.ANTHROPIC_FOUNDRY_AUTH_TOKEN)} (Bearer 토큰, 없으면 엔터):`,
         default: existingEnv.ANTHROPIC_FOUNDRY_AUTH_TOKEN || "",
         transformer: (v) => deleteTransformer(v, isEdit),
-        filter: deleteFilter,
       }
     );
   } else if (provider === "aws") {
@@ -211,7 +192,6 @@ async function promptForProfile(existingProfile) {
         message: `ANTHROPIC_AWS_WORKSPACE_ID${hintDelete(isEdit, existingEnv.ANTHROPIC_AWS_WORKSPACE_ID)}:`,
         default: existingEnv.ANTHROPIC_AWS_WORKSPACE_ID || "",
         transformer: (v) => deleteTransformer(v, isEdit),
-        filter: deleteFilter,
         validate: (v) => (v.trim() ? true : "Workspace ID는 필수입니다"),
       },
       {
@@ -220,7 +200,6 @@ async function promptForProfile(existingProfile) {
         message: `ANTHROPIC_AWS_API_KEY${hintDelete(isEdit, existingEnv.ANTHROPIC_AWS_API_KEY)} (없으면 엔터):`,
         default: existingEnv.ANTHROPIC_AWS_API_KEY || "",
         transformer: (v) => deleteTransformer(v, isEdit),
-        filter: deleteFilter,
       },
       {
         type: "input",
@@ -228,7 +207,6 @@ async function promptForProfile(existingProfile) {
         message: `AWS_REGION${hintDelete(isEdit, existingEnv.AWS_REGION)}:`,
         default: existingEnv.AWS_REGION || "us-east-1",
         transformer: (v) => deleteTransformer(v, isEdit),
-        filter: deleteFilter,
       },
       {
         type: "input",
@@ -236,7 +214,6 @@ async function promptForProfile(existingProfile) {
         message: `ANTHROPIC_AWS_BASE_URL${hintDelete(isEdit, existingEnv.ANTHROPIC_AWS_BASE_URL)} (오버라이드, 없으면 엔터):`,
         default: existingEnv.ANTHROPIC_AWS_BASE_URL || "",
         transformer: (v) => deleteTransformer(v, isEdit),
-        filter: deleteFilter,
       }
     );
   }
@@ -244,8 +221,9 @@ async function promptForProfile(existingProfile) {
   const providerAnswers = await inquirer.prompt(questions);
 
   for (const [key, value] of Object.entries(providerAnswers)) {
-    if (value && value.trim()) {
-      envVars[key] = value.trim();
+    const trimmed = value ? value.trim() : "";
+    if (trimmed && trimmed !== "-") {
+      envVars[key] = trimmed;
     }
   }
 
@@ -305,23 +283,24 @@ async function promptForProfile(existingProfile) {
   const modelAnswers = await inquirer.prompt(modelQuestions);
 
   for (const [key, value] of Object.entries(modelAnswers)) {
-    if (
-      key !== "model" &&
-      key !== "fallbackModel" &&
-      value &&
-      value.trim()
-    ) {
-      envVars[key] = value.trim();
+    const trimmed = value ? value.trim() : "";
+    if (key !== "model" && key !== "fallbackModel" && trimmed && trimmed !== "-") {
+      envVars[key] = trimmed;
     }
   }
 
-  const model = modelAnswers.model ? modelAnswers.model.trim() : null;
-  const fallbackModel = modelAnswers.fallbackModel
-    ? modelAnswers.fallbackModel
-        .split(",")
-        .map((s) => s.trim())
-        .filter(Boolean)
-    : null;
+  const modelRaw = modelAnswers.model ? modelAnswers.model.trim() : "";
+  const model = modelRaw && modelRaw !== "-" ? modelRaw : null;
+
+  const fallbackRaw = modelAnswers.fallbackModel ? modelAnswers.fallbackModel.trim() : "";
+  let fallbackModel = null;
+  if (fallbackRaw && fallbackRaw !== "-") {
+    fallbackModel = fallbackRaw
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+    if (fallbackModel.length === 0) fallbackModel = null;
+  }
 
   // 커스텀 env 반복 입력
   const existingCustomKeys = Object.keys(envVars).filter(
