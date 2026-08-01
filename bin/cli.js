@@ -49,31 +49,6 @@ function printProfileDetail(profile) {
   }
 }
 
-function printProfileDetail(profile) {
-  console.log(chalk.bold("env:"));
-  const env = profile.env || {};
-  if (Object.keys(env).length === 0) {
-    console.log(chalk.dim("  (없음)"));
-  } else {
-    for (const [key, value] of Object.entries(env)) {
-      if (key.includes("KEY") || key.includes("SECRET") || key.includes("TOKEN")) {
-        console.log(chalk.dim(`  ${key}=${maskSensitive(value)}`));
-      } else {
-        console.log(chalk.dim(`  ${key}=${value}`));
-      }
-    }
-  }
-  if (profile.model) {
-    console.log(chalk.bold("\nmodel:") + ` ${profile.model}`);
-  }
-  if (profile.fallbackModel) {
-    console.log(
-      chalk.bold("fallbackModel:") +
-        ` ${Array.isArray(profile.fallbackModel) ? profile.fallbackModel.join(", ") : profile.fallbackModel}`
-    );
-  }
-}
-
 async function offerApply(name) {
   const { doApply } = await inquirer.prompt([
     {
