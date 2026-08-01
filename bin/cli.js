@@ -307,18 +307,30 @@ program
   .command("list")
   .alias("ls")
   .description("저장된 API 프로필 목록 표시")
-  .action(() => {
+  .option("-t, --tag <tag>", "특정 태그로 필터링")
+  .action((opts) => {
     const profiles = manager.listProfiles();
     const activeName = manager.getActiveProfileName();
 
-    if (profiles.length === 0) {
-      console.log(chalk.yellow("저장된 프로필이 없습니다."));
-      console.log(chalk.dim("  cam add <name> 으로 새 프로필을 추가하세요."));
+    const filtered = opts.tag
+      ? profiles.filter((p) => p.tags && p.tags.includes(opts.tag))
+      : profiles;
+
+    if (filtered.length === 0) {
+      if (opts.tag) {
+        console.log(chalk.yellow(`태그 "${opts.tag}"에 해당하는 프로필이 없습니다.`));
+      } else {
+        console.log(chalk.yellow("저장된 프로필이 없습니다."));
+        console.log(chalk.dim("  cam add <name> 으로 새 프로필을 추가하세요."));
+      }
       return;
     }
 
-    console.log(chalk.bold("\n저장된 API 프로필:\n"));
-    for (const p of profiles) {
+    const header = opts.tag
+      ? `\n저장된 API 프로필 (태그: ${opts.tag}):\n`
+      : "\n저장된 API 프로필:\n";
+    console.log(chalk.bold(header));
+    for (const p of filtered) {
       const marker = p.isActive ? chalk.green(" (active)") : "";
       const provider = detectProvider(p.env);
       const providerLabel = PROVIDERS.find((pr) => pr.value === provider)?.name || provider;
