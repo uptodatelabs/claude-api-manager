@@ -11,11 +11,55 @@ const e = React.createElement;
 
 const HEIGHT_OFFSET = 5; // StatusBar(3) + Footer(2)
 
-export default function MainPanel({ view, profile, currentSettings, formState, scroll, focus }) {
+export default function MainPanel({
+  view,
+  profile,
+  currentSettings,
+  formState,
+  scroll,
+  focus,
+  pendingDelete,
+}) {
   // 포커스 시 borderColor: cyan, 비포커스 시 gray
   const activeBorder = focus ? "cyan" : "gray";
 
   const mainContent = (() => {
+    // 삭제 확인 다이얼로그
+    if (pendingDelete) {
+      return e(
+        Box,
+        {
+          flexDirection: "column",
+          borderStyle: "round",
+          borderColor: "red",
+          paddingX: 2,
+          paddingY: 2,
+          flexGrow: 1,
+          justifyContent: "center",
+        },
+        e(
+          Box,
+          { marginBottom: 1 },
+          e(Text, { color: colors.danger, bold: true }, "⚠ 프로필 삭제 확인")
+        ),
+        e(
+          Box,
+          { marginBottom: 2 },
+          e(Text, { color: colors.muted }, "프로필 "),
+          e(Text, { color: colors.primary, bold: true }, `"${pendingDelete}"`),
+          e(Text, { color: colors.muted }, " 을(를) 정말 삭제할까요?")
+        ),
+        e(
+          Box,
+          null,
+          e(Text, { color: colors.danger, bold: true }, " [y] "),
+          e(Text, { color: colors.muted }, "삭제   "),
+          e(Text, { color: colors.muted }, "[n] "),
+          e(Text, { color: colors.muted }, "취소")
+        )
+      );
+    }
+
     switch (view) {
       case "detail":
         return e(ProfileDetail, {

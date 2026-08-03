@@ -10,8 +10,9 @@ import Footer from "./Footer.mjs";
 import Sidebar from "./Sidebar.mjs";
 import MainPanel from "./MainPanel.mjs";
 import { theme, detectProvider } from "./theme.mjs";
+import { KNOWN_ENV_KEYS } from "./ProfileForm.mjs";
 
-const STEPS = ["provider", "keys", "meta"];
+const STEPS = ["provider", "keys", "meta", "custom"];
 
 const e = React.createElement;
 
@@ -31,6 +32,7 @@ export default function App() {
   const [scrollOffset, setScrollOffset] = useState(0);
   const [sidebarManualScroll, setSidebarManualScroll] = useState(0);
   const [focus, setFocus] = useState("sidebar");
+  const [pendingDelete, setPendingDelete] = useState(null);
 
   // useRef로 최신 상태를 항상 참조 (useInput 클로저 stale 문제 해결)
   const stateRef = useRef({});
@@ -51,6 +53,7 @@ export default function App() {
     searchValue,
     view,
     focus,
+    pendingDelete,
     filtered,
   };
 
@@ -107,6 +110,23 @@ export default function App() {
         }
       } else if (key.escape || input === "n") {
         setView("detail");
+      }
+      return;
+    }
+
+    // 삭제 확인 중
+    if (s.pendingDelete) {
+      if (input === "y" || key.return) {
+        try {
+          manager.removeProfile(s.pendingDelete);
+          flash(`✓ "${s.pendingDelete}" 삭제됨`, "success");
+          reload();
+        } catch (err) {
+          flash(`✗ ${err.message}`, "danger");
+        }
+        setPendingDelete(null);
+      } else if (input === "n" || key.escape) {
+        setPendingDelete(null);
       }
       return;
     }
@@ -220,26 +240,30 @@ export default function App() {
     }
     if (input === "e" && selectedProfile) {
       const p = selectedProfile;
+      const env = p.env || {};
+      // 표준 키는 그대로, 나머지는 customList로 분리
+      const customList = Object.entries(env)
+        .filter(([k]) => !KNOWN_ENV_KEYS.includes(k))
+        .map(([k, v]) => ({ key: k, value: v }));
+      const standardEnv = {};
+      for (const [k, v] of Object.entries(env)) {
+        if (KNOWN_ENV_KEYS.includes(k)) standardEnv[k] = v;
+      }
       setEditingProfile(p);
       setFormStepIdx(0);
       setFormData({
-        provider: detectProvider(p.env),
-        ...p.env,
+        provider: detectProvider(env),
+        ...standardEnv,
         fallbackModel: p.fallbackModel ? p.fallbackModel.join(", ") : "",
         description: p.description || "",
         tags: p.tags ? p.tags.join(", ") : "",
+        customList,
       });
       setView("form");
       return;
     }
     if (input === "d" && selectedProfile) {
-      try {
-        manager.removeProfile(selectedProfile.name);
-        flash(`✓ "${selectedProfile.name}" 삭제됨`, "success");
-        reload();
-      } catch (err) {
-        flash(`✗ ${err.message}`, "danger");
-      }
+      setPendingDelete(selectedProfile.name);
       return;
     }
     if (input === "n") {
@@ -278,8 +302,13 @@ export default function App() {
         for (const [k, v] of Object.entries(formData)) {
           const trimmed = (v || "").trim();
           if (!trimmed || trimmed === "-") continue;
-          if (["provider", "fallbackModel", "description", "tags"].includes(k)) continue;
+          if (["provider", "fallbackModel", "description", "tags", "customList"].includes(k)) continue;
           env[k] = trimmed;
+        }
+        // 커스텀 env 병합
+        const customList = formData.customList || [];
+        for (const c of customList) {
+          if (c.key && c.value) env[c.key] = c.value;
         }
         if (formData.provider === "bedrock") env.CLAUDE_CODE_USE_BEDROCK = "1";
         if (formData.provider === "vertex") env.CLAUDE_CODE_USE_VERTEX = "1";
@@ -391,6 +420,7 @@ export default function App() {
           formState,
           scroll: scrollOffset,
           focus: focus === "main",
+          pendingDelete,
         })
       )
     ),
