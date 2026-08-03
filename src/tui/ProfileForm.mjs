@@ -89,12 +89,21 @@ export function FormStep({ step, formData, setFormData, onNext, onPrev, onCancel
     setCustomKeyValue("");
   }, [step]);
 
-  // 커스텀 env 추가
+  // 커스텀 env 추가/삭제
   const addCustomEnv = () => {
     const trimmed = customKeyValue.trim();
     if (!trimmed) {
       // 빈 입력이면 다음 스텝 (완료)
       onNext();
+      return;
+    }
+    // 삭제: -KEY 형식 (예: -API_TIMEOUT_MS)
+    if (trimmed.startsWith("-") && !trimmed.includes("=")) {
+      const delKey = trimmed.slice(1).trim();
+      if (!delKey) return;
+      const list = (formData.customList || []).filter((c) => c.key !== delKey);
+      set({ customList: list });
+      setCustomKeyValue("");
       return;
     }
     const eqIdx = trimmed.indexOf("=");
