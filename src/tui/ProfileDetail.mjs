@@ -43,6 +43,7 @@ export default function ProfileDetail({ profile, isActive, borderColor }) {
 
   const env = profile.env || {};
   const keys = Object.keys(env);
+  const provider = detectProvider(env);
 
   return e(
     Box,
