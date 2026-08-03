@@ -1,11 +1,15 @@
 "use strict";
 import React from "react";
 import { Box, Text } from "ink";
+import TextInput from "ink-text-input";
 import ProfileDetail from "./ProfileDetail.mjs";
 import DiffView from "./DiffView.mjs";
 import { FormStep } from "./ProfileForm.mjs";
 import ScrollBox from "./ScrollBox.mjs";
-import { colors } from "./theme.mjs";
+import { colors, mask } from "./theme.mjs";
+import { createRequire } from "module";
+const require = createRequire(import.meta.url);
+const manager = require("../manager.cjs");
 
 const e = React.createElement;
 
@@ -19,11 +23,115 @@ export default function MainPanel({
   scroll,
   focus,
   pendingDelete,
+  renameTarget,
+  renameValue,
+  onRenameChange,
+  onRenameSubmit,
+  settingsContent,
 }) {
   // 포커스 시 borderColor: cyan, 비포커스 시 gray
   const activeBorder = focus ? "cyan" : "gray";
 
   const mainContent = (() => {
+    // 이름 변경 프롬프트
+    if (view === "rename-prompt") {
+      return e(
+        Box,
+        {
+          flexDirection: "column",
+          borderStyle: "round",
+          borderColor: activeBorder,
+          paddingX: 2,
+          paddingY: 2,
+          flexGrow: 1,
+        },
+        e(
+          Box,
+          { marginBottom: 1 },
+          e(Text, { color: colors.primary, bold: true }, "✏ 프로필 이름 변경")
+        ),
+        e(
+          Box,
+          { marginBottom: 1 },
+          e(Text, { color: colors.muted }, "새 이름: ")
+        ),
+        e(TextInput, {
+          value: renameValue,
+          onChange: onRenameChange,
+          onSubmit: onRenameSubmit,
+          placeholder: renameTarget || "새 프로필 이름",
+        }),
+        e(
+          Box,
+          { marginTop: 1 },
+          e(
+            Text,
+            { color: colors.muted },
+            "[Enter] 변경  [Esc] 취소"
+          )
+        )
+      );
+    }
+
+    // 설정 파일 보기
+    if (view === "settings-view") {
+      const settings = settingsContent;
+      const env = (settings && settings.env) || {};
+      const keys = Object.keys(env);
+      return e(
+        Box,
+        {
+          flexDirection: "column",
+          borderStyle: "round",
+          borderColor: activeBorder,
+          paddingX: 2,
+          paddingY: 1,
+          flexGrow: 1,
+        },
+        e(
+          Box,
+          { marginBottom: 1 },
+          e(Text, { color: colors.primary, bold: true }, "⚙ Claude Code 설정"),
+          e(Text, { color: colors.muted }, "  (" + (settings ? "존재함" : "없음") + ")")
+        ),
+        e(
+          Box,
+          { marginBottom: 1 },
+          e(Text, { color: colors.muted }, "경로: "),
+          e(Text, { color: colors.info }, manager.getSettingsPath())
+        ),
+        e(
+          Box,
+          { marginBottom: 1 },
+          e(Text, { color: colors.brand, bold: true }, "─ env ─")
+        ),
+        keys.length === 0
+          ? e(Text, { color: colors.muted }, "  (env 없음)")
+          : keys.map((k, i) =>
+              e(
+                Box,
+                { key: i },
+                e(Text, { color: "cyan" }, k.padEnd(35, " ")),
+                " = ",
+                /KEY|SECRET|TOKEN/.test(k)
+                  ? e(Text, { color: colors.muted }, mask(k === "ANTHROPIC_API_KEY" ? env[k] : "****"))
+                  : e(Text, { color: colors.primary }, env[k])
+              )
+            ),
+        settings && settings.model
+          ? e(Box, { marginTop: 1 }, e(Text, { color: colors.warning }, "model: "), e(Text, null, settings.model))
+          : null,
+        settings && settings.fallbackModel
+          ? e(Box, null, e(Text, { color: colors.warning }, "fallbackModel: "), e(Text, null, Array.isArray(settings.fallbackModel) ? settings.fallbackModel.join(", ") : settings.fallbackModel))
+          : null,
+        e(
+          Box,
+          { marginTop: 1 },
+          e(Text, { color: colors.muted }, "[Esc] 닫기")
+        )
+      );
+    }
+
     // 삭제 확인 다이얼로그
     if (pendingDelete) {
       return e(

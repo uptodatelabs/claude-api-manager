@@ -33,6 +33,9 @@ export default function App() {
   const [sidebarManualScroll, setSidebarManualScroll] = useState(0);
   const [focus, setFocus] = useState("sidebar");
   const [pendingDelete, setPendingDelete] = useState(null);
+  const [renameTarget, setRenameTarget] = useState(null);
+  const [renameValue, setRenameValue] = useState("");
+  const [settingsContent, setSettingsContent] = useState(null);
 
   // useRef로 최신 상태를 항상 참조 (useInput 클로저 stale 문제 해결)
   const stateRef = useRef({});
@@ -54,6 +57,7 @@ export default function App() {
     view,
     focus,
     pendingDelete,
+    renameTarget,
     filtered,
   };
 
@@ -127,6 +131,24 @@ export default function App() {
         setPendingDelete(null);
       } else if (input === "n" || key.escape) {
         setPendingDelete(null);
+      }
+      return;
+    }
+
+    // 이름 변경 프롬프트
+    if (s.view === "rename-prompt") {
+      if (key.escape) {
+        setRenameTarget(null);
+        setRenameValue("");
+        setView("detail");
+      }
+      return;
+    }
+
+    // 설정 파일 보기
+    if (s.view === "settings-view") {
+      if (key.escape || input === "q" || input === "s") {
+        setView("detail");
       }
       return;
     }
@@ -264,6 +286,17 @@ export default function App() {
     }
     if (input === "d" && selectedProfile) {
       setPendingDelete(selectedProfile.name);
+      return;
+    }
+    if (input === "r" && selectedProfile) {
+      setRenameTarget(selectedProfile.name);
+      setRenameValue(selectedProfile.name);
+      setView("rename-prompt");
+      return;
+    }
+    if (input === "s") {
+      setSettingsContent(manager.readSettings());
+      setView("settings-view");
       return;
     }
     if (input === "n") {
@@ -422,6 +455,29 @@ export default function App() {
           scroll: scrollOffset,
           focus: focus === "main",
           pendingDelete,
+          renameTarget,
+          renameValue,
+          settingsContent,
+          onRenameChange: (v) => setRenameValue(v),
+          onRenameSubmit: () => {
+            const newName = renameValue.trim();
+            if (!newName || !renameTarget || newName === renameTarget) {
+              setRenameTarget(null);
+              setRenameValue("");
+              setView("detail");
+              return;
+            }
+            try {
+              manager.renameProfile(renameTarget, newName);
+              flash(`✓ "${renameTarget}" → "${newName}"`, "success");
+              reload();
+            } catch (err) {
+              flash(`✗ ${err.message}`, "danger");
+            }
+            setRenameTarget(null);
+            setRenameValue("");
+            setView("detail");
+          },
         })
       )
     ),

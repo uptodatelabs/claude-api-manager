@@ -18,15 +18,14 @@ export default function Footer({ hints }) {
   const defaultHints = [
     { key: "Tab", label: "포커스" },
     { key: "↑↓", label: "이동" },
-    { key: "j/k", label: "스크롤" },
-    { key: "PgUp/Dn", label: "페이지" },
-    { key: "g/G", label: "처음/끝" },
     { key: "/", label: "검색" },
     { key: "↵", label: "선택" },
     { key: "a", label: "적용" },
     { key: "e", label: "수정" },
+    { key: "r", label: "이름변경" },
     { key: "d", label: "삭제" },
     { key: "n", label: "추가" },
+    { key: "s", label: "설정보기" },
     { key: "q", label: "종료" },
   ];
   const items = hints || defaultHints;
