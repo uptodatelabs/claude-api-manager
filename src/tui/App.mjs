@@ -300,9 +300,10 @@ export default function App() {
       try {
         const env = {};
         for (const [k, v] of Object.entries(formData)) {
-          const trimmed = (v || "").trim();
-          if (!trimmed || trimmed === "-") continue;
           if (["provider", "fallbackModel", "description", "tags", "customList"].includes(k)) continue;
+          if (typeof v !== "string") continue;
+          const trimmed = v.trim();
+          if (!trimmed || trimmed === "-") continue;
           env[k] = trimmed;
         }
         // 커스텀 env 병합
