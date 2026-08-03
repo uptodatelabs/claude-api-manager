@@ -112,7 +112,7 @@ export default function MainPanel({
                 Box,
                 { key: i },
                 e(Text, { color: "cyan" }, k.padEnd(35, " ")),
-                " = ",
+                e(Text, null, " = "),
                 /KEY|SECRET|TOKEN/.test(k)
                   ? e(Text, { color: colors.muted }, mask(k === "ANTHROPIC_API_KEY" ? env[k] : "****"))
                   : e(Text, { color: colors.primary }, env[k])
