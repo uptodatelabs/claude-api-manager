@@ -31,6 +31,7 @@ export default function App() {
   const [scrollOffset, setScrollOffset] = useState(0);
   const [sidebarScroll, setSidebarScroll] = useState(0);
   const [focus, setFocus] = useState("sidebar");
+  const [sidebarVisibleCount, setSidebarVisibleCount] = useState(7);
 
   // useRef로 최신 상태를 항상 참조 (useInput 클로저 stale 문제 해결)
   const stateRef = useRef({});
@@ -72,17 +73,16 @@ export default function App() {
   }, []);
 
   // selectedIndex가 sidebar의 가시 영역에 있도록 sidebarScroll 자동 조정
-  // 추정 maxItems=7 (사이드바는 보통 5~9개 표시)
   useEffect(() => {
-    const ESTIMATED_MAX = 7;
+    const max = Math.max(1, sidebarVisibleCount);
     setSidebarScroll((s) => {
       if (selectedIndex < s) return Math.max(0, selectedIndex);
-      if (selectedIndex >= s + ESTIMATED_MAX) {
-        return Math.max(0, selectedIndex - ESTIMATED_MAX + 1);
+      if (selectedIndex >= s + max) {
+        return Math.max(0, selectedIndex - max + 1);
       }
       return s;
     });
-  }, [selectedIndex]);
+  }, [selectedIndex, sidebarVisibleCount]);
 
   const flash = (text, type = "info") => {
     setMessage({ text, type });
@@ -384,6 +384,7 @@ export default function App() {
         searchValue,
         scroll: sidebarScroll,
         isFocused: focus === "sidebar",
+        onVisibleCountChange: setSidebarVisibleCount,
         onSearchChange: (v) => {
           setSearchValue(v);
           setSelectedIndex(0);

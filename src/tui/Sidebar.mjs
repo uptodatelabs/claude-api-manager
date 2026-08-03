@@ -59,6 +59,7 @@ export default function Sidebar({
   scroll = 0,
   heightOffset = 5,
   isFocused = true,
+  onVisibleCountChange,
 }) {
   const [rows, setRows] = useState(getTerminalRows());
 
@@ -90,6 +91,11 @@ export default function Sidebar({
     1,
     Math.floor((availableHeight - HEADER_LINES) / LINES_PER_ITEM)
   );
+
+  // 가시 항목 수 변경 시 부모에 알림
+  useEffect(() => {
+    if (onVisibleCountChange) onVisibleCountChange(visibleItems);
+  }, [visibleItems, onVisibleCountChange]);
 
   // 외부 scroll prop을 우선 사용 (사용자가 j/k로 직접 스크롤)
   // 단, selectedIndex가 화면 밖이면 selectedIndex 위치로 자동 보정
