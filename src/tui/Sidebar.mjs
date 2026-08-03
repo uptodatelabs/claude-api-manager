@@ -117,13 +117,14 @@ export default function Sidebar({
 
   // selectedIndex가 보이도록 scroll 조정
   let actualScroll = scroll;
+  // selectedIndex가 scroll보다 위에 있으면 selectedIndex로 맞춤
   if (selectedIndex < actualScroll) {
     actualScroll = selectedIndex;
   }
-  // selectedIndex가 현재 보이는 범위 밖이면 scroll 조정
+  // selectedIndex가 보이는 범위 밖(아래)이면 selectedIndex가 마지막에 보이도록
   if (selectedIndex >= actualScroll + visibleCount) {
-    // selectedIndex가 보이도록 앞에서부터 다시 계산
-    actualScroll = Math.max(0, selectedIndex - Math.floor(visibleCount / 2));
+    // selectedIndex부터 거꾸로 세어서 visibleCount개가 보이도록
+    actualScroll = Math.max(0, selectedIndex - visibleCount + 1);
   }
   actualScroll = Math.max(0, Math.min(actualScroll, Math.max(0, enriched.length - visibleCount)));
 

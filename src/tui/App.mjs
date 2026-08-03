@@ -72,18 +72,6 @@ export default function App() {
     reload();
   }, []);
 
-  // selectedIndex가 sidebar의 가시 영역에 있도록 sidebarScroll 자동 조정
-  // Sidebar가 자체적으로 selectedIndex를 추적하므로 여기서는 scroll만 전달
-  // 단, ↑↓로 selectedIndex가 변경되면 scroll도 맞춰서 조정
-  useEffect(() => {
-    setSidebarScroll((s) => {
-      const max = Math.max(1, sidebarVisibleCount);
-      if (selectedIndex < s) return Math.max(0, selectedIndex);
-      if (selectedIndex >= s + max) return Math.max(0, selectedIndex - max + 1);
-      return s;
-    });
-  }, [selectedIndex, sidebarVisibleCount]);
-
   const flash = (text, type = "info") => {
     setMessage({ text, type });
     setTimeout(() => setMessage(null), 2500);
