@@ -9,21 +9,23 @@ function Key({ label, keyName }) {
   return e(
     Box,
     { marginRight: 1 },
-    e(Text, { backgroundColor: colors.bgGray, color: "white" }, " " + keyName + " "),
+    e(Text, { backgroundColor: "gray", color: "white" }, " " + keyName + " "),
     e(Text, { color: colors.muted }, " " + label)
   );
 }
 
 export default function Footer({ hints }) {
   const defaultHints = [
+    { key: "Tab", label: "포커스" },
     { key: "↑↓", label: "이동" },
+    { key: "j/k", label: "스크롤" },
+    { key: "PgUp/Dn", label: "페이지" },
     { key: "/", label: "검색" },
     { key: "↵", label: "선택" },
     { key: "a", label: "적용" },
     { key: "e", label: "수정" },
     { key: "d", label: "삭제" },
     { key: "n", label: "추가" },
-    { key: "?", label: "도움" },
     { key: "q", label: "종료" },
   ];
   const items = hints || defaultHints;

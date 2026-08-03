@@ -1,5 +1,5 @@
 "use strict";
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Box, Text } from "ink";
 import TextInput from "ink-text-input";
 import { colors, mask, providerName, detectProvider } from "./theme.mjs";
@@ -8,11 +8,9 @@ const e = React.createElement;
 
 function SidebarItem({ profile, isSelected, isFocused }) {
   const provider = detectProvider(profile.env);
-  const indicator = isSelected
-    ? isFocused ? "▶ " : "▶ "
-    : "  ";
+  const indicator = isSelected ? "▶ " : "  ";
   const indicatorColor = isSelected
-    ? isFocused ? colors.brand : colors.primary
+    ? isFocused ? colors.brand : colors.muted
     : colors.muted;
   const activeMark = profile.isActive ? "●" : "○";
   const activeColor = profile.isActive ? colors.success : colors.muted;
@@ -45,6 +43,10 @@ function SidebarItem({ profile, isSelected, isFocused }) {
   );
 }
 
+function getTerminalRows() {
+  return process.stdout.rows || 30;
+}
+
 export default function Sidebar({
   profiles,
   activeProfile,
@@ -54,7 +56,18 @@ export default function Sidebar({
   onSearchChange,
   onSearchExit,
   width,
+  scroll = 0,
+  heightOffset = 5,
+  isFocused = true,
 }) {
+  const [rows, setRows] = useState(getTerminalRows());
+
+  useEffect(() => {
+    const onResize = () => setRows(getTerminalRows());
+    process.stdout.on("resize", onResize);
+    return () => process.stdout.off("resize", onResize);
+  }, []);
+
   const filtered = searchValue
     ? profiles.filter(
         (p) =>
@@ -69,57 +82,99 @@ export default function Sidebar({
   const list = filtered.length > 0 ? filtered : profiles;
   const enriched = list.map((p) => ({ ...p, isActive: p.name === activeProfile }));
 
+  // 화면에 보이는 항목 계산
+  const LINES_PER_ITEM = 3;
+  const HEADER_LINES = 3;
+  const availableHeight = Math.max(5, rows - heightOffset);
+  const visibleItems = Math.max(
+    1,
+    Math.floor((availableHeight - HEADER_LINES) / LINES_PER_ITEM)
+  );
+
+  // selectedIndex가 보이도록 scroll 조정
+  let actualScroll = scroll;
+  if (selectedIndex < actualScroll) actualScroll = selectedIndex;
+  if (selectedIndex >= actualScroll + visibleItems) {
+    actualScroll = selectedIndex - visibleItems + 1;
+  }
+  actualScroll = Math.max(0, Math.min(actualScroll, Math.max(0, enriched.length - visibleItems)));
+
+  const startIdx = actualScroll;
+  const endIdx = Math.min(enriched.length, startIdx + visibleItems);
+  const visible = enriched.slice(startIdx, endIdx);
+
+  const borderColor = isFocused ? "cyan" : "gray";
+
   return e(
     Box,
     {
       flexDirection: "column",
       borderStyle: "round",
-      borderColor: "cyan",
+      borderColor,
       width: width || 28,
       paddingX: 1,
       flexGrow: 0,
       flexShrink: 0,
+      height: availableHeight,
+      overflowY: "hidden",
     },
     e(
       Box,
-      { marginBottom: 1 },
-      e(Text, { color: colors.brand, bold: true }, "✦ Profiles"),
-      e(Text, { color: colors.muted }, " (" + list.length + "/" + profiles.length + ")")
-    ),
-    e(
-      Box,
-      { borderStyle: "single", borderColor: "gray", paddingX: 1, marginBottom: 1 },
-      searchMode
-        ? e(TextInput, {
-            value: searchValue,
-            onChange: onSearchChange,
-            onSubmit: onSearchExit,
-            placeholder: "검색 (이름/태그/설명)",
-          })
-        : e(
-            Text,
-            { color: colors.muted },
-            e(Text, { backgroundColor: "gray", color: "white" }, " / "),
-            e(Text, null, " 검색 또는 이름 입력")
-          )
-    ),
-    ...enriched.map((p, i) =>
+      { flexDirection: "column", flexShrink: 0, marginTop: -scroll },
       e(
         Box,
-        { key: p.name, marginBottom: 1 },
-        e(SidebarItem, {
-          profile: p,
-          isSelected: i === selectedIndex,
-          isFocused: !searchMode,
-        })
-      )
-    ),
-    enriched.length === 0
-      ? e(
+        { marginBottom: 1 },
+        e(Text, { color: colors.brand, bold: true }, "✦ Profiles"),
+        e(Text, { color: colors.muted }, " (" + list.length + "/" + profiles.length + ")")
+      ),
+      e(
+        Box,
+        { borderStyle: "single", borderColor: "gray", paddingX: 1, marginBottom: 1 },
+        searchMode
+          ? e(TextInput, {
+              value: searchValue,
+              onChange: onSearchChange,
+              onSubmit: onSearchExit,
+              placeholder: "검색 (이름/태그/설명)",
+            })
+          : e(
+              Text,
+              { color: colors.muted },
+              e(Text, { backgroundColor: "gray", color: "white" }, " / "),
+              e(Text, null, " 검색 또는 이름 입력")
+            )
+      ),
+      ...visible.map((p, i) =>
+        e(
           Box,
-          { paddingY: 1 },
-          e(Text, { color: colors.warning }, "  일치하는 프로필 없음")
+          { key: p.name, marginBottom: 1 },
+          e(SidebarItem, {
+            profile: p,
+            isSelected: startIdx + i === selectedIndex,
+            isFocused: isFocused,
+          })
         )
-      : null
+      ),
+      enriched.length === 0
+        ? e(
+            Box,
+            { paddingY: 1 },
+            e(Text, { color: colors.warning }, "  일치하는 프로필 없음")
+          )
+        : null,
+      enriched.length > visibleItems
+        ? e(
+            Box,
+            { marginTop: 1 },
+            e(
+              Text,
+              { color: colors.muted },
+              startIdx > 0 ? "▲ " : "  ",
+              `${startIdx + 1}-${endIdx}/${enriched.length}`,
+              endIdx < enriched.length ? " ▼" : "  "
+            )
+          )
+        : null
+    )
   );
 }

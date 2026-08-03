@@ -28,6 +28,8 @@ export default function App() {
   const [formStepIdx, setFormStepIdx] = useState(0);
   const [formData, setFormData] = useState({ provider: "anthropic" });
   const [editingProfile, setEditingProfile] = useState(null);
+  const [scrollOffset, setScrollOffset] = useState(0);
+  const [focus, setFocus] = useState("sidebar"); // "sidebar" | "main"
 
   const reload = () => {
     const list = manager.listProfiles();
@@ -76,23 +78,68 @@ export default function App() {
     if (input === "q" || (key.ctrl && input === "c")) {
       exit();
     }
-    if (key.upArrow) {
-      setSelectedIndex((i) => Math.max(0, i - 1));
-      setView("detail");
+
+    // Tab으로 포커스 전환
+    if (input === "\t") {
+      setFocus(focus === "sidebar" ? "main" : "sidebar");
+      return;
     }
-    if (key.downArrow) {
-      setSelectedIndex((i) => Math.min(filtered.length - 1, i + 1));
-      setView("detail");
+
+    // 사이드바 포커스일 때: ↑↓로 프로필 이동
+    if (focus === "sidebar") {
+      if (key.upArrow) {
+        setSelectedIndex((i) => Math.max(0, i - 1));
+        setView("detail");
+        setScrollOffset(0);
+        return;
+      }
+      if (key.downArrow) {
+        setSelectedIndex((i) => Math.min(filtered.length - 1, i + 1));
+        setView("detail");
+        setScrollOffset(0);
+        return;
+      }
     }
+
+    // 메인 포커스일 때: ↑↓로 스크롤, j/k vim 스타일도 지원
+    if (focus === "main") {
+      if (key.upArrow || input === "k") {
+        setScrollOffset((s) => Math.max(0, s - 1));
+        return;
+      }
+      if (key.downArrow || input === "j") {
+        setScrollOffset((s) => s + 1);
+        return;
+      }
+      if (key.pageUp) {
+        setScrollOffset((s) => Math.max(0, s - 5));
+        return;
+      }
+      if (key.pageDown) {
+        setScrollOffset((s) => s + 5);
+        return;
+      }
+      if (input === "g") {
+        setScrollOffset(0);
+        return;
+      }
+      if (input === "G") {
+        setScrollOffset(999);
+        return;
+      }
+    }
+
     if (input === "/") {
       setSearchMode(true);
       setView("detail");
     }
     if (key.return && selectedProfile) {
       setView("diff");
+      setScrollOffset(0);
     }
     if (input === "a" && selectedProfile) {
       setView("diff");
+      setScrollOffset(0);
     }
     if (input === "e" && selectedProfile) {
       const p = selectedProfile;
@@ -133,6 +180,7 @@ export default function App() {
     }
     if (key.escape) {
       setView("detail");
+      setScrollOffset(0);
     }
   });
 
@@ -255,6 +303,8 @@ export default function App() {
         selectedIndex,
         searchMode,
         searchValue,
+        scroll: scrollOffset,
+        isFocused: focus === "sidebar",
         onSearchChange: (v) => {
           setSearchValue(v);
           setSelectedIndex(0);
@@ -272,6 +322,8 @@ export default function App() {
           profile: selectedProfile,
           currentSettings,
           formState,
+          scroll: scrollOffset,
+          focus: focus === "main",
         })
       )
     ),
