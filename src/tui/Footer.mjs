@@ -2,6 +2,7 @@
 import React from "react";
 import { Box, Text } from "ink";
 import { colors } from "./theme.mjs";
+import { useI18n } from "./i18n.mjs";
 
 const e = React.createElement;
 
@@ -15,18 +16,20 @@ function Key({ label, keyName }) {
 }
 
 export default function Footer({ hints }) {
+  const { t } = useI18n();
   const defaultHints = [
-    { key: "Tab", label: "포커스" },
-    { key: "↑↓", label: "이동" },
-    { key: "/", label: "검색" },
-    { key: "↵", label: "선택" },
-    { key: "a", label: "적용" },
-    { key: "e", label: "수정" },
-    { key: "r", label: "이름변경" },
-    { key: "d", label: "삭제" },
-    { key: "n", label: "추가" },
-    { key: "s", label: "설정보기" },
-    { key: "q", label: "종료" },
+    { key: "Tab", label: t("focus") },
+    { key: "↑↓", label: t("move") },
+    { key: "/", label: t("search") },
+    { key: "↵", label: t("select") },
+    { key: "a", label: t("apply") },
+    { key: "e", label: t("edit") },
+    { key: "r", label: t("rename") },
+    { key: "d", label: t("delete") },
+    { key: "n", label: t("add") },
+    { key: "s", label: t("settings") },
+    { key: "l", label: t("lang") },
+    { key: "q", label: t("quit") },
   ];
   const items = hints || defaultHints;
   return e(

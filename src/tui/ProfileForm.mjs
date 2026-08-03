@@ -4,15 +4,16 @@ import { Box, Text, useInput } from "ink";
 import TextInput from "ink-text-input";
 import SelectInput from "ink-select-input";
 import { colors, providerName } from "./theme.mjs";
+import { useI18n } from "./i18n.mjs";
 
 const e = React.createElement;
 
-export const PROVIDERS = [
-  { label: "Anthropic API (기본)", value: "anthropic" },
-  { label: "Amazon Bedrock", value: "bedrock" },
-  { label: "Google Cloud Agent Platform", value: "vertex" },
-  { label: "Microsoft Foundry", value: "foundry" },
-  { label: "Claude Platform on AWS", value: "aws" },
+export const PROVIDER_VALUES = [
+  { value: "anthropic" },
+  { value: "bedrock" },
+  { value: "vertex" },
+  { value: "foundry" },
+  { value: "aws" },
 ];
 
 // 관리되는 표준 env 키 (custom으로 분류되지 않음)
@@ -45,23 +46,32 @@ export const KNOWN_ENV_KEYS = [
   "ANTHROPIC_AWS_BASE_URL",
 ];
 
-// 각 스텝의 입력 필드 정의 (순차 입력)
+// 각 스텝의 입력 필드 정의 (순차 입력, 라벨은 i18n 키)
 const STEP_FIELDS = {
   keys: [
-    { name: "ANTHROPIC_API_KEY", label: "ANTHROPIC_API_KEY", placeholder: "API 키 (없으면 Enter)" },
-    { name: "ANTHROPIC_AUTH_TOKEN", label: "ANTHROPIC_AUTH_TOKEN", placeholder: "Bearer 토큰 (없으면 Enter)" },
-    { name: "ANTHROPIC_BASE_URL", label: "ANTHROPIC_BASE_URL", placeholder: "프록시/게이트웨이 URL (없으면 Enter)" },
-    { name: "AWS_REGION", label: "AWS_REGION", placeholder: "us-east-1 (없으면 Enter)" },
+    { name: "ANTHROPIC_API_KEY", labelKey: "ANTHROPIC_API_KEY", placeholderKey: "apiKeyPlaceholder" },
+    { name: "ANTHROPIC_AUTH_TOKEN", labelKey: "ANTHROPIC_AUTH_TOKEN", placeholderKey: "authTokenPlaceholder" },
+    { name: "ANTHROPIC_BASE_URL", labelKey: "ANTHROPIC_BASE_URL", placeholderKey: "baseUrlPlaceholder" },
+    { name: "AWS_REGION", labelKey: "AWS_REGION", placeholderKey: "regionPlaceholder" },
   ],
   meta: [
-    { name: "ANTHROPIC_MODEL", label: "ANTHROPIC_MODEL", placeholder: "opus, sonnet, claude-sonnet-4-5-20250514" },
-    { name: "fallbackModel", label: "fallbackModel (쉼표 구분)", placeholder: "claude-sonnet-5,claude-haiku-4-5" },
-    { name: "description", label: "설명", placeholder: "이 프로필의 용도/메모" },
-    { name: "tags", label: "태그 (쉼표 구분)", placeholder: "work, proxy, ollama" },
+    { name: "ANTHROPIC_MODEL", labelKey: "ANTHROPIC_MODEL", placeholderKey: "ANTHROPIC_MODEL" },
+    { name: "fallbackModel", labelKey: "fallbackLabel", placeholderKey: "fallbackModel" },
+    { name: "description", labelKey: "descLabel", placeholderKey: "descPlaceholder" },
+    { name: "tags", labelKey: "tagsLabel", placeholderKey: "tags" },
   ],
 };
 
+const PROVIDER_LABELS = {
+  anthropic: "Anthropic API",
+  bedrock: "Amazon Bedrock",
+  vertex: "Google Cloud Agent Platform",
+  foundry: "Microsoft Foundry",
+  aws: "Claude Platform on AWS",
+};
+
 export function FormStep({ step, formData, setFormData, onNext, onPrev, onCancel, isEdit }) {
+  const { t } = useI18n();
   const set = (patch) => setFormData({ ...formData, ...patch });
 
   // 커스텀 env 추가 (KEY=VALUE 형식)
@@ -142,16 +152,19 @@ export function FormStep({ step, formData, setFormData, onNext, onPrev, onCancel
   let title;
 
   if (step === "provider") {
-    title = "Step 1/4: API 공급자";
+    title = t("providerStep");
     body = e(SelectInput, {
-      items: PROVIDERS,
+      items: PROVIDER_VALUES.map((p) => ({
+        label: PROVIDER_LABELS[p.value] + " (" + t("defaultLabel") + ")",
+        value: p.value,
+      })),
       onSelect: (item) => {
         set({ provider: item.value });
         setTimeout(onNext, 100);
       },
     });
   } else if (step === "keys") {
-    title = "Step 2/4: 키 및 엔드포인트";
+    title = t("keysStep");
     body = e(
       Box,
       { flexDirection: "column" },
@@ -159,16 +172,16 @@ export function FormStep({ step, formData, setFormData, onNext, onPrev, onCancel
       e(
         Box,
         { marginBottom: 1 },
-        e(Text, { color: colors.primary }, field.label),
+        e(Text, { color: colors.primary }, field.labelKey),
         formData[field.name] && isEdit
-          ? e(Text, { color: colors.danger }, " (- 입력 시 삭제)")
+          ? e(Text, { color: colors.danger }, t("deleteHint"))
           : null
       ),
       e(TextInput, {
         value: formData[field.name] || "",
         onChange: (v) => set({ [field.name]: v }),
         onSubmit: nextField,
-        placeholder: field.placeholder,
+        placeholder: t(field.placeholderKey),
       }),
       e(
         Box,
@@ -176,28 +189,28 @@ export function FormStep({ step, formData, setFormData, onNext, onPrev, onCancel
         e(
           Text,
           { color: colors.muted },
-          `필드 ${fieldIdx + 1}/${fields.length} — [Enter] 다음  [Esc] 이전`
+          t("fieldIndicator", { cur: fieldIdx + 1, total: fields.length })
         )
       )
     );
   } else if (step === "meta") {
-    title = "Step 3/4: 모델 및 메타";
+    title = t("metaStep");
     body = e(
       Box,
       { flexDirection: "column" },
       e(
         Box,
         { marginBottom: 1 },
-        e(Text, { color: colors.primary }, field.label),
+        e(Text, { color: colors.primary }, t(field.labelKey)),
         formData[field.name] && isEdit
-          ? e(Text, { color: colors.danger }, " (- 입력 시 삭제)")
+          ? e(Text, { color: colors.danger }, t("deleteHint"))
           : null
       ),
       e(TextInput, {
         value: formData[field.name] || "",
         onChange: (v) => set({ [field.name]: v }),
         onSubmit: nextField,
-        placeholder: field.placeholder,
+        placeholder: t(field.placeholderKey),
       }),
       e(
         Box,
@@ -205,12 +218,12 @@ export function FormStep({ step, formData, setFormData, onNext, onPrev, onCancel
         e(
           Text,
           { color: colors.muted },
-          `필드 ${fieldIdx + 1}/${fields.length} — [Enter] 다음  [Esc] 이전`
+          t("fieldIndicator", { cur: fieldIdx + 1, total: fields.length })
         )
       )
     );
   } else if (step === "custom") {
-    title = "Step 4/4: 커스텀 환경변수 (선택)";
+    title = t("customStep");
     const customList = formData.customList || [];
     body = e(
       Box,
@@ -218,7 +231,7 @@ export function FormStep({ step, formData, setFormData, onNext, onPrev, onCancel
       e(
         Box,
         { marginBottom: 1 },
-        e(Text, { color: colors.muted }, "KEY=VALUE 형식으로 입력, 빈 값 입력 시 완료")
+        e(Text, { color: colors.muted }, t("customFormat"))
       ),
       // 현재 추가된 커스텀 env 목록
       ...customList.map((c, i) =>
@@ -231,13 +244,13 @@ export function FormStep({ step, formData, setFormData, onNext, onPrev, onCancel
       e(
         Box,
         { marginBottom: 1, marginTop: customList.length > 0 ? 1 : 0 },
-        e(Text, { color: colors.primary }, "새 환경변수 (KEY=VALUE)")
+        e(Text, { color: colors.primary }, t("newEnvVar"))
       ),
       e(TextInput, {
         value: customKeyValue,
         onChange: setCustomKeyValue,
         onSubmit: nextField,
-        placeholder: "예: API_TIMEOUT_MS=600000 (비우면 완료)",
+        placeholder: t("customPlaceholder"),
       }),
       e(
         Box,
@@ -246,8 +259,8 @@ export function FormStep({ step, formData, setFormData, onNext, onPrev, onCancel
           Text,
           { color: colors.muted },
           customList.length > 0
-            ? `추가됨 ${customList.length}개 — [Enter] 추가  [Enter] 빈값 완료  [Esc] 이전`
-            : "[Enter] 추가  [Enter] 빈값 완료  [Esc] 이전"
+            ? t("customHintWithCount", { count: customList.length })
+            : t("customHint")
         )
       )
     );
@@ -276,7 +289,7 @@ export function FormStep({ step, formData, setFormData, onNext, onPrev, onCancel
     e(
       Box,
       { marginTop: 1 },
-      e(Text, { color: colors.muted }, "[Esc] 취소")
+      e(Text, { color: colors.muted }, t("escCancel"))
     )
   );
 }

@@ -2,6 +2,7 @@
 import React from "react";
 import { Box, Text } from "ink";
 import { colors, mask, providerName, detectProvider } from "./theme.mjs";
+import { useI18n } from "./i18n.mjs";
 
 const e = React.createElement;
 
@@ -24,6 +25,7 @@ function EnvRow({ keyName, value }) {
 }
 
 export default function ProfileDetail({ profile, isActive, borderColor }) {
+  const { t } = useI18n();
   if (!profile) {
     return e(
       Box,
@@ -36,7 +38,7 @@ export default function ProfileDetail({ profile, isActive, borderColor }) {
       e(
         Box,
         { paddingY: 2, paddingX: 2, borderStyle: "round", borderColor: borderColor || "gray" },
-        e(Text, { color: colors.muted }, "프로파일을 선택하세요")
+        e(Text, { color: colors.muted }, t("selectProfile"))
       )
     );
   }
@@ -73,7 +75,7 @@ export default function ProfileDetail({ profile, isActive, borderColor }) {
       ? e(
           Box,
           { marginBottom: 1 },
-          e(Text, { color: colors.muted }, "설명: "),
+          e(Text, { color: colors.muted }, t("description") + ": "),
           e(Text, null, profile.description)
         )
       : null,
@@ -82,12 +84,12 @@ export default function ProfileDetail({ profile, isActive, borderColor }) {
       ? e(
           Box,
           { marginBottom: 1 },
-          e(Text, { color: colors.muted }, "태그: "),
-          ...profile.tags.map((t, i) =>
+          e(Text, { color: colors.muted }, t("tags") + ": "),
+          ...profile.tags.map((t2, i) =>
             e(
               React.Fragment,
               { key: i },
-              e(Text, { backgroundColor: colors.warning, color: "black" }, " " + t + " "),
+              e(Text, { backgroundColor: colors.warning, color: "black" }, " " + t2 + " "),
               e(Text, null, " ")
             )
           )
@@ -98,10 +100,10 @@ export default function ProfileDetail({ profile, isActive, borderColor }) {
       ? e(
           Box,
           { marginBottom: 1 },
-          e(Text, { color: colors.muted }, "마지막 적용: "),
+          e(Text, { color: colors.muted }, t("lastApplied") + ": "),
           e(Text, null, profile.lastApplied),
           profile.applyCount
-            ? e(Text, { color: colors.muted }, " (" + profile.applyCount + "회)")
+            ? e(Text, { color: colors.muted }, " (" + profile.applyCount + t("times") + ")")
             : null
         )
       : null,
@@ -113,7 +115,7 @@ export default function ProfileDetail({ profile, isActive, borderColor }) {
     ),
 
     keys.length === 0
-      ? e(Text, { color: colors.muted }, "  (없음)")
+      ? e(Text, { color: colors.muted }, "  " + t("none"))
       : keys.map((k, i) => e(EnvRow, { key: i, keyName: k, value: env[k] })),
 
     profile.model

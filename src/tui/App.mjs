@@ -11,6 +11,7 @@ import Sidebar from "./Sidebar.mjs";
 import MainPanel from "./MainPanel.mjs";
 import { theme, detectProvider } from "./theme.mjs";
 import { KNOWN_ENV_KEYS } from "./ProfileForm.mjs";
+import { I18nContext, translate } from "./i18n.mjs";
 
 const STEPS = ["provider", "keys", "meta", "custom"];
 
@@ -37,6 +38,15 @@ export default function App() {
   const [renameValue, setRenameValue] = useState("");
   const [settingsContent, setSettingsContent] = useState(null);
   const [pathValue, setPathValue] = useState("");
+  const [lang, setLang] = useState("en");
+
+  // i18n: t(key, params)
+  const t = (key, params) => translate(lang, key, params);
+  const i18nValue = {
+    lang,
+    setLang,
+    t,
+  };
 
   // useRef로 최신 상태를 항상 참조 (useInput 클로저 stale 문제 해결)
   const stateRef = useRef({});
@@ -106,11 +116,11 @@ export default function App() {
         if (!prof) return;
         try {
           manager.applyProfile(prof.name);
-          flash(`✓ "${prof.name}" 적용됨`, "success");
+          flash(t("successApplied", { name: prof.name }), "success");
           reload();
           setView("detail");
         } catch (err) {
-          flash(`✗ ${err.message}`, "danger");
+          flash(t("errorMsg", { msg: err.message }), "danger");
           setView("detail");
         }
       } else if (key.escape || input === "n") {
@@ -124,10 +134,10 @@ export default function App() {
       if (input === "y" || key.return) {
         try {
           manager.removeProfile(s.pendingDelete);
-          flash(`✓ "${s.pendingDelete}" 삭제됨`, "success");
+          flash(t("successDeleted", { name: s.pendingDelete }), "success");
           reload();
         } catch (err) {
-          flash(`✗ ${err.message}`, "danger");
+          flash(t("errorMsg", { msg: err.message }), "danger");
         }
         setPendingDelete(null);
       } else if (input === "n" || key.escape) {
@@ -311,6 +321,10 @@ export default function App() {
       setView("settings-view");
       return;
     }
+    if (input === "l") {
+      setLang(lang === "en" ? "ko" : "en");
+      return;
+    }
     if (input === "n") {
       setEditingProfile(null);
       setFormStepIdx(0);
@@ -381,11 +395,11 @@ export default function App() {
             description,
             tags
           );
-          flash(`✓ "${editingProfile.name}" 수정됨`, "success");
+          flash(t("successUpdated", { name: editingProfile.name }), "success");
         } else {
           const name = `profile-${Date.now()}`;
           manager.addProfile(name, env, model, fallback, description, tags);
-          flash(`✓ "${name}" 추가됨`, "success");
+          flash(t("successAdded", { name }), "success");
         }
         reload();
         setView("detail");
@@ -393,7 +407,7 @@ export default function App() {
         setFormData({ provider: "anthropic" });
         setEditingProfile(null);
       } catch (err) {
-        flash(`✗ ${err.message}`, "danger");
+        flash(t("errorMsg", { msg: err.message }), "danger");
       }
     } else {
       setFormStepIdx(formStepIdx + 1);
@@ -427,89 +441,94 @@ export default function App() {
   };
 
   return e(
-    Box,
-    { flexDirection: "column", width: "100%", height: "100%" },
-    e(StatusBar, {
-      activeProfile,
-      view,
-      mode: searchMode ? "검색" : null,
-      message,
-    }),
+    I18nContext.Provider,
+    { value: i18nValue },
     e(
       Box,
-      { flexGrow: 1, flexDirection: "row" },
-      e(Sidebar, {
-        profiles,
+      { flexDirection: "column", width: "100%", height: "100%" },
+      e(StatusBar, {
         activeProfile,
-        selectedIndex,
-        searchMode,
-        searchValue,
-        manualScroll: sidebarManualScroll,
-        isFocused: focus === "sidebar",
-        onSearchChange: (v) => {
-          setSearchValue(v);
-          setSelectedIndex(0);
-          setSidebarManualScroll(0);
-        },
-        onSearchExit: () => {
-          setSearchMode(false);
-          setSearchValue("");
-        },
+        view,
+        lang,
+        mode: searchMode ? t("searching") : null,
+        message,
       }),
       e(
         Box,
-        { flexGrow: 1, flexDirection: "column", paddingX: 1 },
-        e(MainPanel, {
-          view,
-          profile: selectedProfile,
-          currentSettings,
-          formState,
-          scroll: scrollOffset,
-          focus: focus === "main",
-          pendingDelete,
-          renameTarget,
-          renameValue,
-          settingsContent,
-          onRenameChange: (v) => setRenameValue(v),
-          onRenameSubmit: () => {
-            const newName = renameValue.trim();
-            if (!newName || !renameTarget || newName === renameTarget) {
+        { flexGrow: 1, flexDirection: "row" },
+        e(Sidebar, {
+          profiles,
+          activeProfile,
+          selectedIndex,
+          searchMode,
+          searchValue,
+          manualScroll: sidebarManualScroll,
+          isFocused: focus === "sidebar",
+          onSearchChange: (v) => {
+            setSearchValue(v);
+            setSelectedIndex(0);
+            setSidebarManualScroll(0);
+          },
+          onSearchExit: () => {
+            setSearchMode(false);
+            setSearchValue("");
+          },
+        }),
+        e(
+          Box,
+          { flexGrow: 1, flexDirection: "column", paddingX: 1 },
+          e(MainPanel, {
+            view,
+            profile: selectedProfile,
+            currentSettings,
+            formState,
+            scroll: scrollOffset,
+            focus: focus === "main",
+            pendingDelete,
+            renameTarget,
+            renameValue,
+            settingsContent,
+            onRenameChange: (v) => setRenameValue(v),
+            onRenameSubmit: () => {
+              const newName = renameValue.trim();
+              if (!newName || !renameTarget || newName === renameTarget) {
+                setRenameTarget(null);
+                setRenameValue("");
+                setView("detail");
+                return;
+              }
+              try {
+                manager.renameProfile(renameTarget, newName);
+                flash(t("successRenamed", { old: renameTarget, new: newName }), "success");
+                reload();
+              } catch (err) {
+                flash(t("errorMsg", { msg: err.message }), "danger");
+              }
               setRenameTarget(null);
               setRenameValue("");
               setView("detail");
-              return;
-            }
-            try {
-              manager.renameProfile(renameTarget, newName);
-              flash(`✓ "${renameTarget}" → "${newName}"`, "success");
-              reload();
-            } catch (err) {
-              flash(`✗ ${err.message}`, "danger");
-            }
-            setRenameTarget(null);
-            setRenameValue("");
-            setView("detail");
-          },
-          pathValue,
-          onPathChange: (v) => setPathValue(v),
-          onPathSubmit: () => {
-            const newPath = pathValue.trim();
-            if (!newPath) {
+            },
+            pathValue,
+            onPathChange: (v) => setPathValue(v),
+            onPathSubmit: () => {
+              const newPath = pathValue.trim();
+              if (!newPath) {
+                setView("settings-view");
+                return;
+              }
+              try {
+                manager.setSettingsPath(newPath);
+                flash(t("successPath", { path: newPath }), "success");
+                setSettingsContent(manager.readSettings());
+              } catch (err) {
+                flash(t("errorMsg", { msg: err.message }), "danger");
+              }
               setView("settings-view");
-              return;
-            }
-            try {
-              manager.setSettingsPath(newPath);
-              flash(`✓ 경로 변경됨: ${newPath}`, "success");
-              setSettingsContent(manager.readSettings());
-            } catch (err) {
-              flash(`✗ ${err.message}`, "danger");
-            }
-            setView("settings-view");
-          },
-        })
-      )
-    ),
-    e(Footer)
+            },
+          })
+        )
+      ),
+      e(Footer)
+    )
   );
 }

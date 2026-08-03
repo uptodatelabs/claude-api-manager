@@ -3,6 +3,7 @@ import React, { useState, useEffect } from "react";
 import { Box, Text } from "ink";
 import TextInput from "ink-text-input";
 import { colors, mask, providerName, detectProvider } from "./theme.mjs";
+import { useI18n } from "./i18n.mjs";
 
 const e = React.createElement;
 
@@ -83,6 +84,7 @@ export default function Sidebar({
   isFocused = true,
 }) {
   const [rows, setRows] = useState(getTerminalRows());
+  const { t } = useI18n();
 
   useEffect(() => {
     const onResize = () => setRows(getTerminalRows());
@@ -180,13 +182,13 @@ export default function Sidebar({
             value: searchValue,
             onChange: onSearchChange,
             onSubmit: onSearchExit,
-            placeholder: "검색 (이름/태그/설명)",
+            placeholder: t("searchPlaceholder"),
           })
         : e(
             Text,
             { color: colors.muted },
             e(Text, { backgroundColor: "gray", color: "white" }, " / "),
-            e(Text, null, " 검색 또는 이름 입력")
+            e(Text, null, t("searchOrType"))
           )
     ),
     // visible 항목들 (slice만 사용)
@@ -205,7 +207,7 @@ export default function Sidebar({
       ? e(
           Box,
           { paddingY: 1, flexShrink: 0 },
-          e(Text, { color: colors.warning }, "  일치하는 프로필 없음")
+          e(Text, { color: colors.warning }, "  " + t("noMatch"))
         )
       : null,
     // 스크롤 인디케이터 (항상 표시, 현재 위치 포함)

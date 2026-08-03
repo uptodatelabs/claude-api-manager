@@ -7,6 +7,7 @@ import DiffView from "./DiffView.mjs";
 import { FormStep } from "./ProfileForm.mjs";
 import ScrollBox from "./ScrollBox.mjs";
 import { colors, mask } from "./theme.mjs";
+import { useI18n } from "./i18n.mjs";
 import { createRequire } from "module";
 const require = createRequire(import.meta.url);
 const manager = require("../manager.cjs");
@@ -34,6 +35,7 @@ export default function MainPanel({
 }) {
   // 포커스 시 borderColor: cyan, 비포커스 시 gray
   const activeBorder = focus ? "cyan" : "gray";
+  const { t } = useI18n();
 
   const mainContent = (() => {
     // 경로 변경 프롬프트
@@ -51,18 +53,18 @@ export default function MainPanel({
         e(
           Box,
           { marginBottom: 1 },
-          e(Text, { color: colors.primary, bold: true }, "⚙ settings.json 경로 변경")
+          e(Text, { color: colors.primary, bold: true }, t("pathTitle"))
         ),
         e(
           Box,
           { marginBottom: 1 },
-          e(Text, { color: colors.muted }, "현재 경로: "),
+          e(Text, { color: colors.muted }, t("currentPath") + " "),
           e(Text, { color: colors.info }, manager.getSettingsPath())
         ),
         e(
           Box,
           { marginBottom: 1 },
-          e(Text, { color: colors.muted }, "새 경로: ")
+          e(Text, { color: colors.muted }, t("newPath") + " ")
         ),
         e(TextInput, {
           value: pathValue,
@@ -76,7 +78,7 @@ export default function MainPanel({
           e(
             Text,
             { color: colors.muted },
-            "[Enter] 변경  [Esc] 취소"
+            t("pathConfirm")
           )
         )
       );
@@ -97,18 +99,18 @@ export default function MainPanel({
         e(
           Box,
           { marginBottom: 1 },
-          e(Text, { color: colors.primary, bold: true }, "✏ 프로필 이름 변경")
+          e(Text, { color: colors.primary, bold: true }, t("renameTitle"))
         ),
         e(
           Box,
           { marginBottom: 1 },
-          e(Text, { color: colors.muted }, "새 이름: ")
+          e(Text, { color: colors.muted }, t("newName") + " ")
         ),
         e(TextInput, {
           value: renameValue,
           onChange: onRenameChange,
           onSubmit: onRenameSubmit,
-          placeholder: renameTarget || "새 프로필 이름",
+          placeholder: renameTarget || t("newName"),
         }),
         e(
           Box,
@@ -116,7 +118,7 @@ export default function MainPanel({
           e(
             Text,
             { color: colors.muted },
-            "[Enter] 변경  [Esc] 취소"
+            t("renameConfirm")
           )
         )
       );
@@ -140,19 +142,19 @@ export default function MainPanel({
         e(
           Box,
           { marginBottom: 1 },
-          e(Text, { color: colors.primary, bold: true }, "⚙ Claude Code 설정"),
-          e(Text, { color: colors.muted }, "  (" + (settings ? "존재함" : "없음") + ")")
+          e(Text, { color: colors.primary, bold: true }, t("settingsTitle")),
+          e(Text, { color: colors.muted }, "  (" + (settings ? t("exists") : t("notFound")) + ")")
         ),
         e(
           Box,
           { marginBottom: 1 },
-          e(Text, { color: colors.muted }, "경로: "),
+          e(Text, { color: colors.muted }, t("path") + " "),
           e(Text, { color: colors.info }, manager.getSettingsPath())
         ),
         e(
           Box,
           { marginBottom: 1 },
-          e(Text, { color: colors.muted }, "[p] 경로 변경")
+          e(Text, { color: colors.muted }, t("changePath"))
         ),
         e(
           Box,
@@ -160,7 +162,7 @@ export default function MainPanel({
           e(Text, { color: colors.brand, bold: true }, "─ env ─")
         ),
         keys.length === 0
-          ? e(Text, { color: colors.muted }, "  (env 없음)")
+          ? e(Text, { color: colors.muted }, "  " + t("noEnv"))
           : keys.map((k, i) =>
               e(
                 Box,
@@ -181,7 +183,7 @@ export default function MainPanel({
         e(
           Box,
           { marginTop: 1 },
-          e(Text, { color: colors.muted }, "[Esc] 닫기")
+          e(Text, { color: colors.muted }, t("close"))
         )
       );
     }
@@ -202,22 +204,20 @@ export default function MainPanel({
         e(
           Box,
           { marginBottom: 1 },
-          e(Text, { color: colors.danger, bold: true }, "⚠ 프로필 삭제 확인")
+          e(Text, { color: colors.danger, bold: true }, "⚠ " + t("deleteTitle"))
         ),
         e(
           Box,
           { marginBottom: 2 },
-          e(Text, { color: colors.muted }, "프로필 "),
-          e(Text, { color: colors.primary, bold: true }, `"${pendingDelete}"`),
-          e(Text, { color: colors.muted }, " 을(를) 정말 삭제할까요?")
+          e(Text, { color: colors.muted }, t("deleteConfirm", { name: pendingDelete }))
         ),
         e(
           Box,
           null,
           e(Text, { color: colors.danger, bold: true }, " [y] "),
-          e(Text, { color: colors.muted }, "삭제   "),
+          e(Text, { color: colors.muted }, t("yesDelete") + "   "),
           e(Text, { color: colors.muted }, "[n] "),
-          e(Text, { color: colors.muted }, "취소")
+          e(Text, { color: colors.muted }, t("noCancel"))
         )
       );
     }
@@ -265,11 +265,11 @@ export default function MainPanel({
           e(
             Box,
             { flexDirection: "column", alignItems: "center" },
-            e(Text, { color: colors.muted }, "  ← 좌측에서 프로필 선택"),
+            e(Text, { color: colors.muted }, "  ← " + t("selectLeft")),
             e(Text, null, " "),
-            e(Text, { color: colors.muted }, "  [n] 새 프로필 추가"),
-            e(Text, { color: colors.muted }, "  [c] settings.json → 프로필"),
-            e(Text, { color: colors.muted }, "  [?] 도움말")
+            e(Text, { color: colors.muted }, "  " + t("addNewProfile")),
+            e(Text, { color: colors.muted }, "  " + t("captureSettings")),
+            e(Text, { color: colors.muted }, "  " + t("help"))
           )
         );
     }

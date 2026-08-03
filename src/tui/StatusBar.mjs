@@ -2,10 +2,12 @@
 import React from "react";
 import { Box, Text } from "ink";
 import { colors } from "./theme.mjs";
+import { useI18n } from "./i18n.mjs";
 
 const e = React.createElement;
 
-export default function StatusBar({ activeProfile, view, mode, message }) {
+export default function StatusBar({ activeProfile, view, mode, message, lang }) {
+  const { t } = useI18n();
   const parts = [
     e(Text, { color: colors.brand, bold: true }, "✦ Claude API Manager"),
     e(Text, { color: colors.muted }, "│"),
@@ -13,17 +15,19 @@ export default function StatusBar({ activeProfile, view, mode, message }) {
       ? e(
           Text,
           null,
-          e(Text, { color: colors.muted }, "active: "),
+          e(Text, { color: colors.muted }, t("active") + ": "),
           e(Text, { color: colors.success }, activeProfile)
         )
-      : e(Text, { color: colors.muted }, "active: -"),
+      : e(Text, { color: colors.muted }, t("active") + ": -"),
     e(Text, { color: colors.muted }, "│"),
     e(
       Text,
       null,
-      e(Text, { color: colors.muted }, "view: "),
+      e(Text, { color: colors.muted }, t("view") + ": "),
       e(Text, { color: colors.primary }, view)
     ),
+    e(Text, { color: colors.muted }, "│"),
+    e(Text, { color: colors.warning }, lang === "en" ? "EN" : "KO"),
   ];
 
   if (mode) {

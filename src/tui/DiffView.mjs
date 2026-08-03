@@ -2,6 +2,7 @@
 import React from "react";
 import { Box, Text } from "ink";
 import { colors, mask } from "./theme.mjs";
+import { useI18n } from "./i18n.mjs";
 
 const e = React.createElement;
 
@@ -10,6 +11,7 @@ function isSensitive(key) {
 }
 
 export default function DiffView({ profile, current, borderColor }) {
+  const { t } = useI18n();
   const profileEnv = (profile && profile.env) || {};
   const currentEnv = (current && current.env) || {};
 
@@ -30,12 +32,14 @@ export default function DiffView({ profile, current, borderColor }) {
     }
   }
 
+  const delLabel = t("deleted");
+  const noneLabel = t("none");
   const modelChanges = [];
   if (profile.model !== undefined && profile.model !== current.model) {
     modelChanges.push({
       key: "model",
-      newValue: profile.model || "(삭제)",
-      oldValue: current.model || "(없음)",
+      newValue: profile.model || delLabel,
+      oldValue: current.model || noneLabel,
     });
   }
   if (profile.fallbackModel !== undefined) {
@@ -44,8 +48,8 @@ export default function DiffView({ profile, current, borderColor }) {
     if (cur !== next) {
       modelChanges.push({
         key: "fallbackModel",
-        newValue: profile.fallbackModel ? profile.fallbackModel.join(", ") : "(삭제)",
-        oldValue: current.fallbackModel ? current.fallbackModel.join(", ") : "(없음)",
+        newValue: profile.fallbackModel ? profile.fallbackModel.join(", ") : delLabel,
+        oldValue: current.fallbackModel ? current.fallbackModel.join(", ") : noneLabel,
       });
     }
   }
@@ -69,14 +73,14 @@ export default function DiffView({ profile, current, borderColor }) {
       Box,
       { marginBottom: 1 },
       e(Text, { color: colors.warning, bold: true }, "⚡ Diff Preview"),
-      e(Text, { color: colors.muted }, " (apply 시 settings.json 변경 사항)")
+      e(Text, { color: colors.muted }, t("diffSubtitle"))
     ),
 
     isEmpty
       ? e(
           Box,
           { paddingY: 1 },
-          e(Text, { color: colors.success }, "  변경 사항 없음")
+          e(Text, { color: colors.success }, "  " + t("noChanges"))
         )
       : null,
 
@@ -171,7 +175,7 @@ export default function DiffView({ profile, current, borderColor }) {
     e(
       Box,
       { marginTop: 1 },
-      e(Text, { color: colors.muted }, "  [Enter] 적용   [Esc] 취소")
+      e(Text, { color: colors.muted }, t("applyCancel"))
     )
   );
 }
