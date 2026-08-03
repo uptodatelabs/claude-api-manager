@@ -2,12 +2,12 @@
   "name": "claude-api-manager",
   "version": "2.0.0",
   "description": "Manage multiple Claude Code API configurations with a TUI dashboard",
-  "main": "src/manager.js",
+  "main": "src/manager.cjs",
   "bin": {
-    "cam": "./bin/cli.js"
+    "cam": "./bin/cli.mjs"
   },
   "scripts": {
-    "start": "node bin/cli.js"
+    "start": "node bin/cli.mjs"
   },
   "keywords": [
     "claude",
