@@ -71,6 +71,19 @@ export default function App() {
     reload();
   }, []);
 
+  // selectedIndex가 sidebar의 가시 영역에 있도록 sidebarScroll 자동 조정
+  // 추정 maxItems=7 (사이드바는 보통 5~9개 표시)
+  useEffect(() => {
+    const ESTIMATED_MAX = 7;
+    setSidebarScroll((s) => {
+      if (selectedIndex < s) return Math.max(0, selectedIndex);
+      if (selectedIndex >= s + ESTIMATED_MAX) {
+        return Math.max(0, selectedIndex - ESTIMATED_MAX + 1);
+      }
+      return s;
+    });
+  }, [selectedIndex]);
+
   const flash = (text, type = "info") => {
     setMessage({ text, type });
     setTimeout(() => setMessage(null), 2500);
