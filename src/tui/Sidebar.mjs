@@ -63,11 +63,10 @@ function getTerminalRows() {
   return process.stdout.rows || 30;
 }
 
-// 각 프로필이 몇 줄을 차지하는지 계산
-function getItemLineCount(profile) {
-  let lines = 2; // 이름 + 공급자
-  if (profile.env && profile.env.ANTHROPIC_BASE_URL) lines++; // URL
-  return lines + 1; // marginBottom: 1
+// 각 프로필이 몇 줄을 차지하는지 계산 (truncate-end로 줄바꿈 없음)
+function getItemLineCount() {
+  // 이름(1) + 공급자(1) + URL(1) + marginBottom(1) = 4
+  return 4;
 }
 
 export default function Sidebar({
@@ -79,10 +78,9 @@ export default function Sidebar({
   onSearchChange,
   onSearchExit,
   width,
-  scroll = 0,
+  manualScroll = 0,
   heightOffset = 5,
   isFocused = true,
-  onVisibleCountChange,
 }) {
   const [rows, setRows] = useState(getTerminalRows());
 
@@ -106,56 +104,47 @@ export default function Sidebar({
   const list = filtered.length > 0 ? filtered : profiles;
   const enriched = list.map((p) => ({ ...p, isActive: p.name === activeProfile }));
 
-  // 헤더가 차지하는 줄 수: 제목(1) + marginBottom(1) + 검색박스(1) + marginBottom(1) = 4
-  const HEADER_LINES = 4;
-  // 하단 인디케이터: marginTop(1) + 텍스트(1) = 2
+  // 레이아웃 줄 수:
+  // 헤더: 제목(1) + margin(1) + 검색박스[border 2 + 입력 1](3) + margin(1) = 6
+  const HEADER_LINES = 6;
+  // 푸터: 인디케이터 marginTop(1) + 텍스트(1) = 2
   const FOOTER_LINES = enriched.length > 1 ? 2 : 0;
-  // 외부 Box의 round border가 차지하는 줄 수 (위 1 + 아래 1)
+  // 외부 Box의 round border (위 1 + 아래 1)
   const BORDER_LINES = 2;
   const availableHeight = Math.max(5, rows - heightOffset);
   const contentHeight = availableHeight - BORDER_LINES - HEADER_LINES - FOOTER_LINES;
+  const ITEM_LINES = getItemLineCount();
 
   // 특정 scroll 위치에서 몇 개가 보이는지 계산
   function calcVisibleCount(scrollPos) {
-    let used = 0;
-    let count = 0;
-    for (let i = scrollPos; i < enriched.length; i++) {
-      const itemLines = getItemLineCount(enriched[i]);
-      if (used + itemLines > contentHeight && count > 0) break;
-      used += itemLines;
-      count++;
-    }
-    return Math.max(1, count);
+    return Math.max(
+      1,
+      Math.floor(contentHeight / ITEM_LINES)
+    );
   }
 
-  // 1. scroll prop 기준 초기 visibleCount 계산
-  const scrollVisibleCount = calcVisibleCount(scroll);
+  // 1. manualScroll 기준 초기 위치 (j/k로 수동 스크롤)
+  let actualScroll = Math.max(0, Math.min(manualScroll, Math.max(0, enriched.length - 1)));
 
-  // 최대 scroll: 마지막 항목이 화면 아래에 보이도록 (공백 방지)
-  const maxScroll = Math.max(0, enriched.length - scrollVisibleCount);
-
-  // 2. selectedIndex가 보이도록 actualScroll 결정
-  let actualScroll = Math.max(0, Math.min(scroll, maxScroll));
+  // 2. selectedIndex가 보이도록 follow (순수 파생, 렌더마다 항상 일관)
+  const vis1 = calcVisibleCount(actualScroll);
   if (selectedIndex < actualScroll) {
     actualScroll = selectedIndex;
-  } else if (selectedIndex >= actualScroll + scrollVisibleCount) {
-    actualScroll = Math.max(0, selectedIndex - scrollVisibleCount + 1);
+  } else if (selectedIndex >= actualScroll + vis1) {
+    actualScroll = Math.max(0, selectedIndex - vis1 + 1);
   }
-  actualScroll = Math.max(0, Math.min(actualScroll, maxScroll));
 
-  // 3. actualScroll 위치에서 실제 visibleCount 재계산
+  // 3. 최종 visibleCount 계산 후 클램프
   const visibleCount = calcVisibleCount(actualScroll);
-
-  // 4. visibleCount가 바뀌면 selectedIndex 보정 다시 확인
-  if (selectedIndex >= actualScroll + visibleCount) {
-    actualScroll = Math.max(0, selectedIndex - visibleCount + 1);
-  }
+  const maxScroll = Math.max(0, enriched.length - visibleCount);
   actualScroll = Math.max(0, Math.min(actualScroll, maxScroll));
 
-  // 가시 항목 수 변경 시 부모에 알림
-  useEffect(() => {
-    if (onVisibleCountChange) onVisibleCountChange(visibleCount);
-  }, [visibleCount, onVisibleCountChange]);
+  // 4. 클램프로 visibleCount가 바뀌었으면 follow 다시 확인
+  const vis2 = calcVisibleCount(actualScroll);
+  if (selectedIndex >= actualScroll + vis2) {
+    actualScroll = Math.max(0, selectedIndex - vis2 + 1);
+    actualScroll = Math.max(0, Math.min(actualScroll, maxScroll));
+  }
 
   const startIdx = actualScroll;
   const endIdx = Math.min(enriched.length, startIdx + visibleCount);
@@ -200,7 +189,7 @@ export default function Sidebar({
             e(Text, null, " 검색 또는 이름 입력")
           )
     ),
-    // visible 항목들 (marginTop 없이 slice만 사용)
+    // visible 항목들 (slice만 사용)
     ...visible.map((p, i) =>
       e(
         Box,
@@ -228,9 +217,12 @@ export default function Sidebar({
             Text,
             { color: colors.muted },
             startIdx > 0 ? "▲ " : "  ",
-            `${startIdx + 1}-${endIdx}/${enriched.length}`,
-            " ▸ ",
-            e(Text, { color: colors.primary, bold: true }, `${selectedIndex + 1}`),
+            `${startIdx + 1}-${endIdx}/${enriched.length}`
+          ),
+          e(Text, { color: colors.primary, bold: true }, " ▸ " + (selectedIndex + 1)),
+          e(
+            Text,
+            { color: colors.muted },
             endIdx < enriched.length ? " ▼" : "  "
           )
         )

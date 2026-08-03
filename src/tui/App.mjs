@@ -29,9 +29,8 @@ export default function App() {
   const [formData, setFormData] = useState({ provider: "anthropic" });
   const [editingProfile, setEditingProfile] = useState(null);
   const [scrollOffset, setScrollOffset] = useState(0);
-  const [sidebarScroll, setSidebarScroll] = useState(0);
+  const [sidebarManualScroll, setSidebarManualScroll] = useState(0);
   const [focus, setFocus] = useState("sidebar");
-  const [sidebarVisibleCount, setSidebarVisibleCount] = useState(7);
 
   // useRef로 최신 상태를 항상 참조 (useInput 클로저 stale 문제 해결)
   const stateRef = useRef({});
@@ -138,11 +137,6 @@ export default function App() {
     if (s.focus === "sidebar") {
       if (key.upArrow) {
         setSelectedIndex((i) => Math.max(0, i - 1));
-        // selectedIndex가 scroll 위치와 같으면 scroll도 -1 (위로 스크롤)
-        setSidebarScroll((sc) => {
-          if (s.selectedIndex <= sc && sc > 0) return sc - 1;
-          return sc;
-        });
         setView("detail");
         setScrollOffset(0);
         return;
@@ -150,40 +144,32 @@ export default function App() {
       if (key.downArrow) {
         const max = Math.max(0, s.filtered.length - 1);
         setSelectedIndex((i) => Math.min(max, i + 1));
-        // selectedIndex가 가시 범위 마지막이면 scroll도 +1 (아래로 스크롤)
-        // 최대 scroll은 len - vis (마지막 항목이 화면 아래에 보이도록)
-        setSidebarScroll((sc) => {
-          const vis = Math.max(1, Math.min(sidebarVisibleCount, s.filtered.length));
-          const maxScroll = Math.max(0, s.filtered.length - vis);
-          if (s.selectedIndex >= sc + vis - 1) return Math.min(sc + 1, maxScroll);
-          return sc;
-        });
         setView("detail");
         setScrollOffset(0);
         return;
       }
       if (input === "k") {
-        setSidebarScroll((s2) => Math.max(0, s2 - 1));
+        setSidebarManualScroll((s2) => Math.max(0, s2 - 1));
         return;
       }
       if (input === "j") {
-        setSidebarScroll((s2) => s2 + 1);
+        setSidebarManualScroll((s2) => s2 + 1);
         return;
       }
       if (key.pageUp) {
-        setSidebarScroll((s2) => Math.max(0, s2 - 5));
+        setSidebarManualScroll((s2) => Math.max(0, s2 - 5));
         return;
       }
       if (key.pageDown) {
-        setSidebarScroll((s2) => s2 + 5);
+        setSidebarManualScroll((s2) => s2 + 5);
         return;
       }
       if (input === "g") {
-        setSidebarScroll(0);
+        setSidebarManualScroll(0);
         return;
       }
       if (input === "G") {
-        setSidebarScroll(999);
+        setSidebarManualScroll(999);
         return;
       }
     }
@@ -383,13 +369,12 @@ export default function App() {
         selectedIndex,
         searchMode,
         searchValue,
-        scroll: sidebarScroll,
+        manualScroll: sidebarManualScroll,
         isFocused: focus === "sidebar",
-        onVisibleCountChange: setSidebarVisibleCount,
         onSearchChange: (v) => {
           setSearchValue(v);
           setSelectedIndex(0);
-          setSidebarScroll(0);
+          setSidebarManualScroll(0);
         },
         onSearchExit: () => {
           setSearchMode(false);
