@@ -151,9 +151,11 @@ export default function App() {
         const max = Math.max(0, s.filtered.length - 1);
         setSelectedIndex((i) => Math.min(max, i + 1));
         // selectedIndex가 가시 범위 마지막이면 scroll도 +1 (아래로 스크롤)
+        // 최대 scroll은 len - vis (마지막 항목이 화면 아래에 보이도록)
         setSidebarScroll((sc) => {
-          const vis = Math.max(1, sidebarVisibleCount);
-          if (s.selectedIndex >= sc + vis - 1) return sc + 1;
+          const vis = Math.max(1, Math.min(sidebarVisibleCount, s.filtered.length));
+          const maxScroll = Math.max(0, s.filtered.length - vis);
+          if (s.selectedIndex >= sc + vis - 1) return Math.min(sc + 1, maxScroll);
           return sc;
         });
         setView("detail");

@@ -94,8 +94,10 @@ export default function Sidebar({
   const HEADER_LINES = 4;
   // 하단 인디케이터: marginTop(1) + 텍스트(1) = 2
   const FOOTER_LINES = enriched.length > 1 ? 2 : 0;
+  // 외부 Box의 round border가 차지하는 줄 수 (위 1 + 아래 1)
+  const BORDER_LINES = 2;
   const availableHeight = Math.max(5, rows - heightOffset);
-  const contentHeight = availableHeight - HEADER_LINES - FOOTER_LINES;
+  const contentHeight = availableHeight - BORDER_LINES - HEADER_LINES - FOOTER_LINES;
 
   // 특정 scroll 위치에서 몇 개가 보이는지 계산
   function calcVisibleCount(scrollPos) {
@@ -113,14 +115,17 @@ export default function Sidebar({
   // 1. scroll prop 기준 초기 visibleCount 계산
   const scrollVisibleCount = calcVisibleCount(scroll);
 
+  // 최대 scroll: 마지막 항목이 화면 아래에 보이도록 (공백 방지)
+  const maxScroll = Math.max(0, enriched.length - scrollVisibleCount);
+
   // 2. selectedIndex가 보이도록 actualScroll 결정
-  let actualScroll = scroll;
+  let actualScroll = Math.max(0, Math.min(scroll, maxScroll));
   if (selectedIndex < actualScroll) {
     actualScroll = selectedIndex;
   } else if (selectedIndex >= actualScroll + scrollVisibleCount) {
     actualScroll = Math.max(0, selectedIndex - scrollVisibleCount + 1);
   }
-  actualScroll = Math.max(0, Math.min(actualScroll, Math.max(0, enriched.length - 1)));
+  actualScroll = Math.max(0, Math.min(actualScroll, maxScroll));
 
   // 3. actualScroll 위치에서 실제 visibleCount 재계산
   const visibleCount = calcVisibleCount(actualScroll);
@@ -129,7 +134,7 @@ export default function Sidebar({
   if (selectedIndex >= actualScroll + visibleCount) {
     actualScroll = Math.max(0, selectedIndex - visibleCount + 1);
   }
-  actualScroll = Math.max(0, Math.min(actualScroll, Math.max(0, enriched.length - 1)));
+  actualScroll = Math.max(0, Math.min(actualScroll, maxScroll));
 
   // 가시 항목 수 변경 시 부모에 알림
   useEffect(() => {
@@ -198,8 +203,8 @@ export default function Sidebar({
           e(Text, { color: colors.warning }, "  일치하는 프로필 없음")
         )
       : null,
-    // 스크롤 인디케이터
-    enriched.length > visibleCount
+    // 스크롤 인디케이터 (항상 표시)
+    enriched.length > 1
       ? e(
           Box,
           { marginTop: 1, flexShrink: 0 },
