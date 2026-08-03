@@ -18,7 +18,7 @@ function SidebarItem({ profile, isSelected, isFocused }) {
 
   const tags =
     profile.tags && profile.tags.length > 0
-      ? e(Text, { color: colors.yellow }, " [" + profile.tags.join(",") + "]")
+      ? e(Text, { color: colors.yellow, wrap: "truncate-end" }, " [" + profile.tags.join(",") + "]")
       : null;
 
   return e(
@@ -27,11 +27,11 @@ function SidebarItem({ profile, isSelected, isFocused }) {
     e(
       Box,
       null,
-      e(Text, { color: indicatorColor, textWrap: "truncate-end" }, indicator),
-      e(Text, { color: activeColor, textWrap: "truncate-end" }, activeMark + " "),
+      e(Text, { color: indicatorColor, wrap: "truncate-end" }, indicator),
+      e(Text, { color: activeColor, wrap: "truncate-end" }, activeMark + " "),
       e(
         Text,
-        { color: nameColor, bold: isSelected && isFocused, textWrap: "truncate-end" },
+        { color: nameColor, bold: isSelected && isFocused, wrap: "truncate-end" },
         profile.name
       ),
       tags
@@ -41,7 +41,7 @@ function SidebarItem({ profile, isSelected, isFocused }) {
       null,
       e(
         Text,
-        { color: colors.muted, textWrap: "truncate-end" },
+        { color: colors.muted, wrap: "truncate-end" },
         "    " + providerName(provider)
       )
     ),
@@ -51,7 +51,7 @@ function SidebarItem({ profile, isSelected, isFocused }) {
           null,
           e(
             Text,
-            { color: colors.muted, textWrap: "truncate-end" },
+            { color: colors.muted, wrap: "truncate-end" },
             "    " + profile.env.ANTHROPIC_BASE_URL
           )
         )
@@ -215,14 +215,18 @@ export default function Sidebar({
           { marginTop: 1, flexShrink: 0 },
           e(
             Text,
-            { color: colors.muted },
+            { color: colors.muted, wrap: "truncate-end" },
             startIdx > 0 ? "▲ " : "  ",
             `${startIdx + 1}-${endIdx}/${enriched.length}`
           ),
-          e(Text, { color: colors.primary, bold: true }, " ▸ " + (selectedIndex + 1)),
           e(
             Text,
-            { color: colors.muted },
+            { color: colors.primary, bold: true, wrap: "truncate-end" },
+            " | pos " + (selectedIndex + 1)
+          ),
+          e(
+            Text,
+            { color: colors.muted, wrap: "truncate-end" },
             endIdx < enriched.length ? " ▼" : "  "
           )
         )
