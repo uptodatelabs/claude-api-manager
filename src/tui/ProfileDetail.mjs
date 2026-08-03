@@ -19,7 +19,7 @@ export default function ProfileDetail({ profile, isActive }) {
     return e(
       Box,
       { flexDirection: "column", paddingX: 1 },
-      e(Box, { marginBottom: 1 }, theme.brand("✦ Profile Detail")),
+      e(Box, { marginBottom: 1 }, e(Text, null, theme.brand("✦ Profile Detail"))),
       e(
         Box,
         { paddingY: 2, paddingX: 2, borderStyle: "round", borderColor: "gray" },
@@ -47,8 +47,8 @@ export default function ProfileDetail({ profile, isActive }) {
       e(
         Box,
         null,
-        theme.brand("✦ "),
-        theme.primary.bold(profile.name),
+        e(Text, null, theme.brand("✦ ")),
+        e(Text, null, theme.primary.bold(profile.name)),
         isActive
           ? e(Text, { backgroundColor: "green", color: "white" }, " ACTIVE ")
           : e(Text, { backgroundColor: "gray", color: "white" }, " INACTIVE ")
@@ -60,7 +60,7 @@ export default function ProfileDetail({ profile, isActive }) {
       ? e(
           Box,
           { marginBottom: 1 },
-          theme.subtle("설명: "),
+          e(Text, { color: "gray" }, "설명: "),
           e(Text, null, profile.description)
         )
       : null,
@@ -69,12 +69,12 @@ export default function ProfileDetail({ profile, isActive }) {
       ? e(
           Box,
           { marginBottom: 1 },
-          theme.subtle("태그: "),
+          e(Text, { color: "gray" }, "태그: "),
           ...profile.tags.map((t, i) =>
             e(
               React.Fragment,
               { key: i },
-              e(Text, { backgroundColor: "yellow", color: "black" }, " ", t, " "),
+              e(Text, { backgroundColor: "yellow", color: "black" }, " " + t + " "),
               e(Text, null, " ")
             )
           )
@@ -85,10 +85,10 @@ export default function ProfileDetail({ profile, isActive }) {
       ? e(
           Box,
           { marginBottom: 1 },
-          theme.subtle("마지막 적용: "),
+          e(Text, { color: "gray" }, "마지막 적용: "),
           e(Text, null, profile.lastApplied),
           profile.applyCount
-            ? e(Text, { color: "gray" }, ` (${profile.applyCount}회)`)
+            ? e(Text, { color: "gray" }, " (" + profile.applyCount + "회)")
             : null
         )
       : null,
@@ -96,7 +96,7 @@ export default function ProfileDetail({ profile, isActive }) {
     e(
       Box,
       { marginTop: 1, marginBottom: 1 },
-      theme.brand("─ Environment Variables ─")
+      e(Text, null, theme.brand("─ Environment Variables ─"))
     ),
 
     keys.length === 0
@@ -105,9 +105,9 @@ export default function ProfileDetail({ profile, isActive }) {
           e(
             Box,
             { key: i },
-            theme.subtle("  "),
+            e(Text, { color: "gray" }, "  "),
             e(Text, { color: "cyan" }, k.padEnd(35, " ")),
-            " = ",
+            e(Text, null, " = "),
             formatValue(k, env[k])
           )
         ),
@@ -116,7 +116,7 @@ export default function ProfileDetail({ profile, isActive }) {
       ? e(
           Box,
           { marginTop: 1 },
-          theme.warning("model:        "),
+          e(Text, { color: "yellow" }, "model:        "),
           e(Text, null, profile.model)
         )
       : null,
@@ -125,14 +125,14 @@ export default function ProfileDetail({ profile, isActive }) {
       ? e(
           Box,
           null,
-          theme.warning("fallbackModel:"),
+          e(Text, { color: "yellow" }, "fallbackModel:"),
           e(
             Text,
             null,
-            " ",
-            Array.isArray(profile.fallbackModel)
-              ? profile.fallbackModel.join(", ")
-              : profile.fallbackModel
+            " " +
+              (Array.isArray(profile.fallbackModel)
+                ? profile.fallbackModel.join(", ")
+                : profile.fallbackModel)
           )
         )
       : null

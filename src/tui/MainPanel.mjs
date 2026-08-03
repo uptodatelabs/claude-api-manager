@@ -45,7 +45,7 @@ export default function MainPanel({ view, profile, currentSettings, formState })
           Box,
           { marginBottom: 2 },
           e(Text, { color: "cyan" }, "✦"),
-          " ",
+          e(Text, null, " "),
           e(Text, { color: "cyan", bold: true }, "Claude API Manager")
         ),
         e(

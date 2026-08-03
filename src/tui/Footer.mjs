@@ -10,8 +10,7 @@ function Key({ label, keyName }) {
     Box,
     { marginRight: 1 },
     e(Text, { backgroundColor: "gray", color: "white" }, " ", keyName, " "),
-    " ",
-    e(Text, { color: "gray" }, label)
+    e(Text, { color: "gray" }, " " + label)
   );
 }
 

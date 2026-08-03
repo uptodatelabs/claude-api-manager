@@ -22,7 +22,7 @@ export function Field({ label, value, onChange, placeholder, isEdit, hasExisting
     e(
       Box,
       null,
-      theme.primary(label),
+      e(Text, { color: "cyan" }, label),
       hasExisting && isEdit ? e(Text, { color: "red" }, " (- 입력 시 삭제)") : null
     ),
     e(TextInput, { value, onChange, placeholder, focus })
@@ -135,7 +135,7 @@ export function FormStep({ step, formData, setFormData, onNext, onPrev, isEdit }
     e(
       Box,
       { marginBottom: 1, justifyContent: "space-between" },
-      theme.brand(isEdit ? "✎ Edit Profile" : "✦ New Profile"),
+      e(Text, null, theme.brand(isEdit ? "✎ Edit Profile" : "✦ New Profile")),
       e(Text, { color: "gray" }, title)
     ),
     body,

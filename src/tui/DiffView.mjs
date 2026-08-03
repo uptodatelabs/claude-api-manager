@@ -68,7 +68,7 @@ export default function DiffView({ profile, current }) {
     e(
       Box,
       { marginBottom: 1 },
-      theme.warning.bold("⚡ Diff Preview"),
+      e(Text, null, theme.warning.bold("⚡ Diff Preview")),
       e(Text, { color: "gray" }, " (apply 시 settings.json 변경 사항)")
     ),
 
@@ -86,7 +86,7 @@ export default function DiffView({ profile, current }) {
         { key: "a" + i },
         e(Text, { color: "green" }, "  + "),
         e(Text, { color: "green" }, it.key),
-        " = ",
+        e(Text, null, " = "),
         e(Text, { color: "green" }, isSensitive(it.key) ? mask(it.value) : it.value)
       )
     ),
@@ -97,7 +97,7 @@ export default function DiffView({ profile, current }) {
         { key: "r" + i },
         e(Text, { color: "red" }, "  - "),
         e(Text, { color: "red" }, it.key),
-        " = ",
+        e(Text, null, " = "),
         e(Text, { color: "red" }, isSensitive(it.key) ? mask(it.value) : it.value)
       )
     ),

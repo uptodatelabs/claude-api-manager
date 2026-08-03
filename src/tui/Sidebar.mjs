@@ -19,16 +19,27 @@ function SidebarItem({ profile, isSelected, isFocused }) {
 
   const tags =
     profile.tags && profile.tags.length > 0
-      ? e(Text, { color: "yellow" }, " [", profile.tags.join(","), "]")
+      ? e(Text, { color: "yellow" }, " [" + profile.tags.join(",") + "]")
       : null;
 
   return e(
     Box,
     { flexDirection: "column" },
-    e(Box, null, indicator, activeMark, " ", name, tags),
-    e(Box, null, theme.subtle("    "), e(Text, { color: "gray" }, providerName(provider))),
+    e(
+      Box,
+      null,
+      e(Text, null, indicator),
+      e(Text, null, activeMark + " "),
+      e(Text, null, name),
+      tags
+    ),
+    e(
+      Box,
+      null,
+      e(Text, { color: "gray" }, "    " + providerName(provider))
+    ),
     profile.env.ANTHROPIC_BASE_URL
-      ? e(Box, null, theme.subtle("    "), e(Text, { color: "gray" }, profile.env.ANTHROPIC_BASE_URL))
+      ? e(Box, null, e(Text, { color: "gray" }, "    " + profile.env.ANTHROPIC_BASE_URL))
       : null
   );
 }
@@ -71,8 +82,8 @@ export default function Sidebar({
     e(
       Box,
       { marginBottom: 1 },
-      theme.brand("✦ Profiles"),
-      e(Text, { color: "gray" }, ` (${list.length}/${profiles.length})`)
+      e(Text, null, theme.brand("✦ Profiles")),
+      e(Text, { color: "gray" }, " (" + list.length + "/" + profiles.length + ")")
     ),
     e(
       Box,
@@ -88,7 +99,7 @@ export default function Sidebar({
             Text,
             { color: "gray" },
             e(Text, { backgroundColor: "gray", color: "white" }, " / "),
-            " 검색 또는 이름 입력"
+            e(Text, null, " 검색 또는 이름 입력")
           )
     ),
     ...enriched.map((p, i) =>

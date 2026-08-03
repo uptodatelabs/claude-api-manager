@@ -7,21 +7,45 @@ const e = React.createElement;
 
 export default function StatusBar({ activeProfile, view, mode, message }) {
   const parts = [
-    theme.brand("✦ Claude API Manager"),
-    theme.muted("│"),
+    e(Text, null, theme.brand("✦ Claude API Manager")),
+    e(Text, { color: "gray" }, "│"),
     activeProfile
-      ? e(Text, { key: "ap" }, theme.muted("active: "), theme.success(activeProfile))
-      : e(Text, { key: "ap", color: "gray" }, "active: -"),
-    theme.muted("│"),
-    e(Text, { key: "vw" }, theme.muted("view: "), theme.primary(view)),
+      ? e(
+          Text,
+          null,
+          e(Text, { color: "gray" }, "active: "),
+          e(Text, { color: "green" }, activeProfile)
+        )
+      : e(Text, { color: "gray" }, "active: -"),
+    e(Text, { color: "gray" }, "│"),
+    e(
+      Text,
+      null,
+      e(Text, { color: "gray" }, "view: "),
+      e(Text, { color: "cyan" }, view)
+    ),
   ];
 
   if (mode) {
-    parts.push(e(Text, { key: "md" }, theme.muted("│ "), theme.warning(mode)));
+    parts.push(
+      e(
+        Text,
+        null,
+        e(Text, { color: "gray" }, "│ "),
+        e(Text, { color: "yellow" }, mode)
+      )
+    );
   }
 
   if (message) {
-    parts.push(e(Text, { key: "msg" }, theme.muted("│ "), theme.info(message)));
+    parts.push(
+      e(
+        Text,
+        null,
+        e(Text, { color: "gray" }, "│ "),
+        e(Text, { color: "blue" }, message)
+      )
+    );
   }
 
   return e(
