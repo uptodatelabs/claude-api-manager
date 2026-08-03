@@ -97,36 +97,44 @@ export default function Sidebar({
   const availableHeight = Math.max(5, rows - heightOffset);
   const contentHeight = availableHeight - HEADER_LINES - FOOTER_LINES;
 
-  // scroll 위치부터 시작해서 contentHeight에 몇 개가 들어가는지 계산
-  let usedLines = 0;
-  let visibleCount = 0;
-  for (let i = scroll; i < enriched.length; i++) {
-    const itemLines = getItemLineCount(enriched[i]);
-    if (usedLines + itemLines > contentHeight && visibleCount > 0) break;
-    usedLines += itemLines;
-    visibleCount++;
+  // 특정 scroll 위치에서 몇 개가 보이는지 계산
+  function calcVisibleCount(scrollPos) {
+    let used = 0;
+    let count = 0;
+    for (let i = scrollPos; i < enriched.length; i++) {
+      const itemLines = getItemLineCount(enriched[i]);
+      if (used + itemLines > contentHeight && count > 0) break;
+      used += itemLines;
+      count++;
+    }
+    return Math.max(1, count);
   }
 
-  // 최소 1개는 표시
-  if (visibleCount === 0) visibleCount = 1;
+  // 1. scroll prop 기준 초기 visibleCount 계산
+  const scrollVisibleCount = calcVisibleCount(scroll);
+
+  // 2. selectedIndex가 보이도록 actualScroll 결정
+  let actualScroll = scroll;
+  if (selectedIndex < actualScroll) {
+    actualScroll = selectedIndex;
+  } else if (selectedIndex >= actualScroll + scrollVisibleCount) {
+    actualScroll = Math.max(0, selectedIndex - scrollVisibleCount + 1);
+  }
+  actualScroll = Math.max(0, Math.min(actualScroll, Math.max(0, enriched.length - 1)));
+
+  // 3. actualScroll 위치에서 실제 visibleCount 재계산
+  const visibleCount = calcVisibleCount(actualScroll);
+
+  // 4. visibleCount가 바뀌면 selectedIndex 보정 다시 확인
+  if (selectedIndex >= actualScroll + visibleCount) {
+    actualScroll = Math.max(0, selectedIndex - visibleCount + 1);
+  }
+  actualScroll = Math.max(0, Math.min(actualScroll, Math.max(0, enriched.length - 1)));
 
   // 가시 항목 수 변경 시 부모에 알림
   useEffect(() => {
     if (onVisibleCountChange) onVisibleCountChange(visibleCount);
   }, [visibleCount, onVisibleCountChange]);
-
-  // selectedIndex가 보이도록 scroll 조정
-  let actualScroll = scroll;
-  // selectedIndex가 scroll보다 위에 있으면 selectedIndex로 맞춤
-  if (selectedIndex < actualScroll) {
-    actualScroll = selectedIndex;
-  }
-  // selectedIndex가 보이는 범위 밖(아래)이면 selectedIndex가 마지막에 보이도록
-  if (selectedIndex >= actualScroll + visibleCount) {
-    // selectedIndex부터 거꾸로 세어서 visibleCount개가 보이도록
-    actualScroll = Math.max(0, selectedIndex - visibleCount + 1);
-  }
-  actualScroll = Math.max(0, Math.min(actualScroll, Math.max(0, enriched.length - visibleCount)));
 
   const startIdx = actualScroll;
   const endIdx = Math.min(enriched.length, startIdx + visibleCount);
