@@ -20,6 +20,7 @@ export default function Footer({ hints }) {
     { key: "↑↓", label: "이동" },
     { key: "j/k", label: "스크롤" },
     { key: "PgUp/Dn", label: "페이지" },
+    { key: "g/G", label: "처음/끝" },
     { key: "/", label: "검색" },
     { key: "↵", label: "선택" },
     { key: "a", label: "적용" },

@@ -29,6 +29,7 @@ export default function App() {
   const [formData, setFormData] = useState({ provider: "anthropic" });
   const [editingProfile, setEditingProfile] = useState(null);
   const [scrollOffset, setScrollOffset] = useState(0);
+  const [sidebarScroll, setSidebarScroll] = useState(0);
   const [focus, setFocus] = useState("sidebar"); // "sidebar" | "main"
 
   const reload = () => {
@@ -85,7 +86,7 @@ export default function App() {
       return;
     }
 
-    // 사이드바 포커스일 때: ↑↓로 프로필 이동
+    // 사이드바 포커스일 때: ↑↓로 프로필 이동, j/k로 사이드바 스크롤
     if (focus === "sidebar") {
       if (key.upArrow) {
         setSelectedIndex((i) => Math.max(0, i - 1));
@@ -97,6 +98,30 @@ export default function App() {
         setSelectedIndex((i) => Math.min(filtered.length - 1, i + 1));
         setView("detail");
         setScrollOffset(0);
+        return;
+      }
+      if (input === "k") {
+        setSidebarScroll((s) => Math.max(0, s - 1));
+        return;
+      }
+      if (input === "j") {
+        setSidebarScroll((s) => s + 1);
+        return;
+      }
+      if (key.pageUp) {
+        setSidebarScroll((s) => Math.max(0, s - 5));
+        return;
+      }
+      if (key.pageDown) {
+        setSidebarScroll((s) => s + 5);
+        return;
+      }
+      if (input === "g") {
+        setSidebarScroll(0);
+        return;
+      }
+      if (input === "G") {
+        setSidebarScroll(999);
         return;
       }
     }
@@ -303,11 +328,12 @@ export default function App() {
         selectedIndex,
         searchMode,
         searchValue,
-        scroll: scrollOffset,
+        scroll: sidebarScroll,
         isFocused: focus === "sidebar",
         onSearchChange: (v) => {
           setSearchValue(v);
           setSelectedIndex(0);
+          setSidebarScroll(0);
         },
         onSearchExit: () => {
           setSearchMode(false);

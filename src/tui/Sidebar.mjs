@@ -91,7 +91,8 @@ export default function Sidebar({
     Math.floor((availableHeight - HEADER_LINES) / LINES_PER_ITEM)
   );
 
-  // selectedIndex가 보이도록 scroll 조정
+  // 외부 scroll prop을 우선 사용 (사용자가 j/k로 직접 스크롤)
+  // 단, selectedIndex가 화면 밖이면 selectedIndex 위치로 자동 보정
   let actualScroll = scroll;
   if (selectedIndex < actualScroll) actualScroll = selectedIndex;
   if (selectedIndex >= actualScroll + visibleItems) {
@@ -116,6 +117,7 @@ export default function Sidebar({
       flexGrow: 0,
       flexShrink: 0,
       height: availableHeight,
+      minHeight: availableHeight,
       overflowY: "hidden",
     },
     e(
