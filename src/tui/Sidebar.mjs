@@ -47,6 +47,13 @@ function getTerminalRows() {
   return process.stdout.rows || 30;
 }
 
+// 각 프로필이 몇 줄을 차지하는지 계산
+function getItemLineCount(profile) {
+  let lines = 2; // 이름 + 공급자
+  if (profile.env && profile.env.ANTHROPIC_BASE_URL) lines++; // URL
+  return lines + 1; // marginBottom: 1
+}
+
 export default function Sidebar({
   profiles,
   activeProfile,
@@ -83,31 +90,45 @@ export default function Sidebar({
   const list = filtered.length > 0 ? filtered : profiles;
   const enriched = list.map((p) => ({ ...p, isActive: p.name === activeProfile }));
 
-  // 화면에 보이는 항목 계산
-  const LINES_PER_ITEM = 3;
-  const HEADER_LINES = 3;
+  // 헤더가 차지하는 줄 수: 제목(1) + marginBottom(1) + 검색박스(1) + marginBottom(1) = 4
+  const HEADER_LINES = 4;
+  // 하단 인디케이터: marginTop(1) + 텍스트(1) = 2
+  const FOOTER_LINES = enriched.length > 1 ? 2 : 0;
   const availableHeight = Math.max(5, rows - heightOffset);
-  const visibleItems = Math.max(
-    1,
-    Math.floor((availableHeight - HEADER_LINES) / LINES_PER_ITEM)
-  );
+  const contentHeight = availableHeight - HEADER_LINES - FOOTER_LINES;
+
+  // scroll 위치부터 시작해서 contentHeight에 몇 개가 들어가는지 계산
+  let usedLines = 0;
+  let visibleCount = 0;
+  for (let i = scroll; i < enriched.length; i++) {
+    const itemLines = getItemLineCount(enriched[i]);
+    if (usedLines + itemLines > contentHeight && visibleCount > 0) break;
+    usedLines += itemLines;
+    visibleCount++;
+  }
+
+  // 최소 1개는 표시
+  if (visibleCount === 0) visibleCount = 1;
 
   // 가시 항목 수 변경 시 부모에 알림
   useEffect(() => {
-    if (onVisibleCountChange) onVisibleCountChange(visibleItems);
-  }, [visibleItems, onVisibleCountChange]);
+    if (onVisibleCountChange) onVisibleCountChange(visibleCount);
+  }, [visibleCount, onVisibleCountChange]);
 
-  // 외부 scroll prop을 우선 사용 (사용자가 j/k로 직접 스크롤)
-  // 단, selectedIndex가 화면 밖이면 selectedIndex 위치로 자동 보정
+  // selectedIndex가 보이도록 scroll 조정
   let actualScroll = scroll;
-  if (selectedIndex < actualScroll) actualScroll = selectedIndex;
-  if (selectedIndex >= actualScroll + visibleItems) {
-    actualScroll = selectedIndex - visibleItems + 1;
+  if (selectedIndex < actualScroll) {
+    actualScroll = selectedIndex;
   }
-  actualScroll = Math.max(0, Math.min(actualScroll, Math.max(0, enriched.length - visibleItems)));
+  // selectedIndex가 현재 보이는 범위 밖이면 scroll 조정
+  if (selectedIndex >= actualScroll + visibleCount) {
+    // selectedIndex가 보이도록 앞에서부터 다시 계산
+    actualScroll = Math.max(0, selectedIndex - Math.floor(visibleCount / 2));
+  }
+  actualScroll = Math.max(0, Math.min(actualScroll, Math.max(0, enriched.length - visibleCount)));
 
   const startIdx = actualScroll;
-  const endIdx = Math.min(enriched.length, startIdx + visibleItems);
+  const endIdx = Math.min(enriched.length, startIdx + visibleCount);
   const visible = enriched.slice(startIdx, endIdx);
 
   const borderColor = isFocused ? "cyan" : "gray";
@@ -123,66 +144,64 @@ export default function Sidebar({
       flexGrow: 0,
       flexShrink: 0,
       height: availableHeight,
-      minHeight: availableHeight,
       overflowY: "hidden",
     },
+    // 헤더 (고정)
     e(
       Box,
-      { flexDirection: "column", flexShrink: 0, marginTop: -scroll },
-      e(
-        Box,
-        { marginBottom: 1 },
-        e(Text, { color: colors.brand, bold: true }, "✦ Profiles"),
-        e(Text, { color: colors.muted }, " (" + list.length + "/" + profiles.length + ")")
-      ),
-      e(
-        Box,
-        { borderStyle: "single", borderColor: "gray", paddingX: 1, marginBottom: 1 },
-        searchMode
-          ? e(TextInput, {
-              value: searchValue,
-              onChange: onSearchChange,
-              onSubmit: onSearchExit,
-              placeholder: "검색 (이름/태그/설명)",
-            })
-          : e(
-              Text,
-              { color: colors.muted },
-              e(Text, { backgroundColor: "gray", color: "white" }, " / "),
-              e(Text, null, " 검색 또는 이름 입력")
-            )
-      ),
-      ...visible.map((p, i) =>
-        e(
-          Box,
-          { key: p.name, marginBottom: 1 },
-          e(SidebarItem, {
-            profile: p,
-            isSelected: startIdx + i === selectedIndex,
-            isFocused: isFocused,
+      { marginBottom: 1, flexShrink: 0 },
+      e(Text, { color: colors.brand, bold: true }, "✦ Profiles"),
+      e(Text, { color: colors.muted }, " (" + list.length + "/" + profiles.length + ")")
+    ),
+    e(
+      Box,
+      { borderStyle: "single", borderColor: "gray", paddingX: 1, marginBottom: 1, flexShrink: 0 },
+      searchMode
+        ? e(TextInput, {
+            value: searchValue,
+            onChange: onSearchChange,
+            onSubmit: onSearchExit,
+            placeholder: "검색 (이름/태그/설명)",
           })
+        : e(
+            Text,
+            { color: colors.muted },
+            e(Text, { backgroundColor: "gray", color: "white" }, " / "),
+            e(Text, null, " 검색 또는 이름 입력")
+          )
+    ),
+    // visible 항목들 (marginTop 없이 slice만 사용)
+    ...visible.map((p, i) =>
+      e(
+        Box,
+        { key: p.name, marginBottom: 1, flexShrink: 0 },
+        e(SidebarItem, {
+          profile: p,
+          isSelected: startIdx + i === selectedIndex,
+          isFocused: isFocused,
+        })
+      )
+    ),
+    enriched.length === 0
+      ? e(
+          Box,
+          { paddingY: 1, flexShrink: 0 },
+          e(Text, { color: colors.warning }, "  일치하는 프로필 없음")
         )
-      ),
-      enriched.length === 0
-        ? e(
-            Box,
-            { paddingY: 1 },
-            e(Text, { color: colors.warning }, "  일치하는 프로필 없음")
+      : null,
+    // 스크롤 인디케이터
+    enriched.length > visibleCount
+      ? e(
+          Box,
+          { marginTop: 1, flexShrink: 0 },
+          e(
+            Text,
+            { color: colors.muted },
+            startIdx > 0 ? "▲ " : "  ",
+            `${startIdx + 1}-${endIdx}/${enriched.length}`,
+            endIdx < enriched.length ? " ▼" : "  "
           )
-        : null,
-      enriched.length > visibleItems
-        ? e(
-            Box,
-            { marginTop: 1 },
-            e(
-              Text,
-              { color: colors.muted },
-              startIdx > 0 ? "▲ " : "  ",
-              `${startIdx + 1}-${endIdx}/${enriched.length}`,
-              endIdx < enriched.length ? " ▼" : "  "
-            )
-          )
-        : null
-    )
+        )
+      : null
   );
 }
