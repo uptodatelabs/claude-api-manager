@@ -27,18 +27,34 @@ function SidebarItem({ profile, isSelected, isFocused }) {
     e(
       Box,
       null,
-      e(Text, { color: indicatorColor }, indicator),
-      e(Text, { color: activeColor }, activeMark + " "),
-      e(Text, { color: nameColor, bold: isSelected && isFocused }, profile.name),
+      e(Text, { color: indicatorColor, textWrap: "truncate-end" }, indicator),
+      e(Text, { color: activeColor, textWrap: "truncate-end" }, activeMark + " "),
+      e(
+        Text,
+        { color: nameColor, bold: isSelected && isFocused, textWrap: "truncate-end" },
+        profile.name
+      ),
       tags
     ),
     e(
       Box,
       null,
-      e(Text, { color: colors.muted }, "    " + providerName(provider))
+      e(
+        Text,
+        { color: colors.muted, textWrap: "truncate-end" },
+        "    " + providerName(provider)
+      )
     ),
     profile.env.ANTHROPIC_BASE_URL
-      ? e(Box, null, e(Text, { color: colors.muted }, "    " + profile.env.ANTHROPIC_BASE_URL))
+      ? e(
+          Box,
+          null,
+          e(
+            Text,
+            { color: colors.muted, textWrap: "truncate-end" },
+            "    " + profile.env.ANTHROPIC_BASE_URL
+          )
+        )
       : null
   );
 }
@@ -203,7 +219,7 @@ export default function Sidebar({
           e(Text, { color: colors.warning }, "  일치하는 프로필 없음")
         )
       : null,
-    // 스크롤 인디케이터 (항상 표시)
+    // 스크롤 인디케이터 (항상 표시, 현재 위치 포함)
     enriched.length > 1
       ? e(
           Box,
@@ -213,6 +229,8 @@ export default function Sidebar({
             { color: colors.muted },
             startIdx > 0 ? "▲ " : "  ",
             `${startIdx + 1}-${endIdx}/${enriched.length}`,
+            " ▸ ",
+            e(Text, { color: colors.primary, bold: true }, `${selectedIndex + 1}`),
             endIdx < enriched.length ? " ▼" : "  "
           )
         )
