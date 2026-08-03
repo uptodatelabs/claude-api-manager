@@ -298,6 +298,7 @@ export default function App() {
       setFormData({
         provider: detectProvider(env),
         ...standardEnv,
+        model: p.model || "",
         fallbackModel: p.fallbackModel ? p.fallbackModel.join(", ") : "",
         description: p.description || "",
         tags: p.tags ? p.tags.join(", ") : "",
@@ -359,7 +360,7 @@ export default function App() {
       try {
         const env = {};
         for (const [k, v] of Object.entries(formData)) {
-          if (["provider", "fallbackModel", "description", "tags", "customList"].includes(k)) continue;
+          if (["provider", "model", "fallbackModel", "description", "tags", "customList"].includes(k)) continue;
           if (typeof v !== "string") continue;
           const trimmed = v.trim();
           if (!trimmed || trimmed === "-") continue;
@@ -374,7 +375,11 @@ export default function App() {
         if (formData.provider === "vertex") env.CLAUDE_CODE_USE_VERTEX = "1";
         if (formData.provider === "foundry") env.CLAUDE_CODE_USE_FOUNDRY = "1";
 
-        const model = formData.ANTHROPIC_MODEL ? formData.ANTHROPIC_MODEL.trim() : null;
+        // settings.json top-level model 키 (env.ANTHROPIC_MODEL과 별개)
+        const model =
+          formData.model && formData.model.trim() !== "-"
+            ? formData.model.trim()
+            : null;
         const fallback = formData.fallbackModel
           ? formData.fallbackModel.split(",").map((s) => s.trim()).filter(Boolean)
           : null;
