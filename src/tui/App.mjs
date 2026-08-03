@@ -1,5 +1,5 @@
 "use strict";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Box, Text, useApp, useInput } from "ink";
 import { createRequire } from "module";
 const require = createRequire(import.meta.url);
@@ -30,17 +30,39 @@ export default function App() {
   const [editingProfile, setEditingProfile] = useState(null);
   const [scrollOffset, setScrollOffset] = useState(0);
   const [sidebarScroll, setSidebarScroll] = useState(0);
-  const [focus, setFocus] = useState("sidebar"); // "sidebar" | "main"
+  const [focus, setFocus] = useState("sidebar");
+
+  // useRef로 최신 상태를 항상 참조 (useInput 클로저 stale 문제 해결)
+  const stateRef = useRef({});
+  const filtered =
+    searchValue
+      ? profiles.filter(
+          (p) =>
+            p.name.toLowerCase().includes(searchValue.toLowerCase()) ||
+            (p.description &&
+              p.description.toLowerCase().includes(searchValue.toLowerCase())) ||
+            (p.tags && p.tags.some((t) => t.toLowerCase().includes(searchValue.toLowerCase())))
+        )
+      : profiles;
+  stateRef.current = {
+    profiles,
+    selectedIndex,
+    searchMode,
+    searchValue,
+    view,
+    focus,
+    filtered,
+  };
 
   const reload = () => {
     const list = manager.listProfiles();
     setProfiles(list);
     setActiveProfile(manager.getActiveProfileName());
     setCurrentSettings(manager.readSettings());
-    if (selectedIndex >= list.length) {
+    if (stateRef.current.selectedIndex >= list.length) {
       setSelectedIndex(Math.max(0, list.length - 1));
     }
-    if (list.length > 0 && view === "empty") {
+    if (list.length > 0 && stateRef.current.view === "empty") {
       setView("detail");
     }
   };
@@ -54,40 +76,65 @@ export default function App() {
     setTimeout(() => setMessage(null), 2500);
   };
 
-  const filtered = searchValue
-    ? profiles.filter(
-        (p) =>
-          p.name.toLowerCase().includes(searchValue.toLowerCase()) ||
-          (p.description &&
-            p.description.toLowerCase().includes(searchValue.toLowerCase())) ||
-          (p.tags && p.tags.some((t) => t.toLowerCase().includes(searchValue.toLowerCase())))
-      )
-    : profiles;
-
   const selectedProfile = filtered[selectedIndex] || profiles[selectedIndex];
 
+  // 단일 useInput — 모든 키 입력 처리
   useInput((input, key) => {
-    if (searchMode) return;
-    if (
-      view === "form" ||
-      view === "capture-prompt" ||
-      view === "import-prompt" ||
-      view === "export-prompt"
-    )
-      return;
+    const s = stateRef.current;
 
+    // 검색 모드
+    if (s.searchMode) {
+      if (key.escape) {
+        setSearchMode(false);
+        setSearchValue("");
+      }
+      return;
+    }
+
+    // diff 뷰에서 Enter
+    if (s.view === "diff") {
+      if (key.return || input === "y") {
+        const prof = s.filtered[s.selectedIndex] || s.profiles[s.selectedIndex];
+        if (!prof) return;
+        try {
+          manager.applyProfile(prof.name);
+          flash(`✓ "${prof.name}" 적용됨`, "success");
+          reload();
+          setView("detail");
+        } catch (err) {
+          flash(`✗ ${err.message}`, "danger");
+          setView("detail");
+        }
+      } else if (key.escape || input === "n") {
+        setView("detail");
+      }
+      return;
+    }
+
+    // 폼/프롬프트 뷰에서는 입력 무시
+    if (
+      s.view === "form" ||
+      s.view === "capture-prompt" ||
+      s.view === "import-prompt" ||
+      s.view === "export-prompt"
+    ) {
+      return;
+    }
+
+    // 종료
     if (input === "q" || (key.ctrl && input === "c")) {
       exit();
+      return;
     }
 
     // Tab으로 포커스 전환
-    if (input === "\t") {
-      setFocus(focus === "sidebar" ? "main" : "sidebar");
+    if (key.tab) {
+      setFocus(s.focus === "sidebar" ? "main" : "sidebar");
       return;
     }
 
-    // 사이드바 포커스일 때: ↑↓로 프로필 이동, j/k로 사이드바 스크롤
-    if (focus === "sidebar") {
+    // 사이드바 포커스
+    if (s.focus === "sidebar") {
       if (key.upArrow) {
         setSelectedIndex((i) => Math.max(0, i - 1));
         setView("detail");
@@ -95,25 +142,26 @@ export default function App() {
         return;
       }
       if (key.downArrow) {
-        setSelectedIndex((i) => Math.min(filtered.length - 1, i + 1));
+        const max = Math.max(0, s.filtered.length - 1);
+        setSelectedIndex((i) => Math.min(max, i + 1));
         setView("detail");
         setScrollOffset(0);
         return;
       }
       if (input === "k") {
-        setSidebarScroll((s) => Math.max(0, s - 1));
+        setSidebarScroll((s2) => Math.max(0, s2 - 1));
         return;
       }
       if (input === "j") {
-        setSidebarScroll((s) => s + 1);
+        setSidebarScroll((s2) => s2 + 1);
         return;
       }
       if (key.pageUp) {
-        setSidebarScroll((s) => Math.max(0, s - 5));
+        setSidebarScroll((s2) => Math.max(0, s2 - 5));
         return;
       }
       if (key.pageDown) {
-        setSidebarScroll((s) => s + 5);
+        setSidebarScroll((s2) => s2 + 5);
         return;
       }
       if (input === "g") {
@@ -126,22 +174,22 @@ export default function App() {
       }
     }
 
-    // 메인 포커스일 때: ↑↓로 스크롤, j/k vim 스타일도 지원
-    if (focus === "main") {
+    // 메인 포커스
+    if (s.focus === "main") {
       if (key.upArrow || input === "k") {
-        setScrollOffset((s) => Math.max(0, s - 1));
+        setScrollOffset((s2) => Math.max(0, s2 - 1));
         return;
       }
       if (key.downArrow || input === "j") {
-        setScrollOffset((s) => s + 1);
+        setScrollOffset((s2) => s2 + 1);
         return;
       }
       if (key.pageUp) {
-        setScrollOffset((s) => Math.max(0, s - 5));
+        setScrollOffset((s2) => Math.max(0, s2 - 5));
         return;
       }
       if (key.pageDown) {
-        setScrollOffset((s) => s + 5);
+        setScrollOffset((s2) => s2 + 5);
         return;
       }
       if (input === "g") {
@@ -154,17 +202,21 @@ export default function App() {
       }
     }
 
+    // 공통 명령어 (포커스 무관)
     if (input === "/") {
       setSearchMode(true);
       setView("detail");
+      return;
     }
     if (key.return && selectedProfile) {
       setView("diff");
       setScrollOffset(0);
+      return;
     }
     if (input === "a" && selectedProfile) {
       setView("diff");
       setScrollOffset(0);
+      return;
     }
     if (input === "e" && selectedProfile) {
       const p = selectedProfile;
@@ -178,6 +230,7 @@ export default function App() {
         tags: p.tags ? p.tags.join(", ") : "",
       });
       setView("form");
+      return;
     }
     if (input === "d" && selectedProfile) {
       try {
@@ -187,51 +240,31 @@ export default function App() {
       } catch (err) {
         flash(`✗ ${err.message}`, "danger");
       }
+      return;
     }
     if (input === "n") {
       setEditingProfile(null);
       setFormStepIdx(0);
       setFormData({ provider: "anthropic" });
       setView("form");
+      return;
     }
     if (input === "c") {
       setView("capture-prompt");
+      return;
     }
     if (input === "i") {
       setView("import-prompt");
+      return;
     }
     if (input === "x") {
       setView("export-prompt");
+      return;
     }
     if (key.escape) {
       setView("detail");
       setScrollOffset(0);
-    }
-  });
-
-  useInput((input, key) => {
-    if (!searchMode) return;
-    if (key.escape) {
-      setSearchMode(false);
-      setSearchValue("");
-    }
-  });
-
-  useInput((input, key) => {
-    if (view !== "diff") return;
-    if (key.return || input === "y") {
-      if (!selectedProfile) return;
-      try {
-        manager.applyProfile(selectedProfile.name);
-        flash(`✓ "${selectedProfile.name}" 적용됨`, "success");
-        reload();
-        setView("detail");
-      } catch (err) {
-        flash(`✗ ${err.message}`, "danger");
-        setView("detail");
-      }
-    } else if (key.escape || input === "n") {
-      setView("detail");
+      return;
     }
   });
 
@@ -275,7 +308,7 @@ export default function App() {
           );
           flash(`✓ "${editingProfile.name}" 수정됨`, "success");
         } else {
-          const name = editingProfile ? editingProfile.name : `profile-${Date.now()}`;
+          const name = `profile-${Date.now()}`;
           manager.addProfile(name, env, model, fallback, description, tags);
           flash(`✓ "${name}" 추가됨`, "success");
         }
