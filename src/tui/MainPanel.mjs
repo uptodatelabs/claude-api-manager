@@ -168,7 +168,7 @@ export default function MainPanel({
                 e(Text, { color: "cyan" }, k.padEnd(35, " ")),
                 e(Text, null, " = "),
                 /KEY|SECRET|TOKEN/.test(k)
-                  ? e(Text, { color: colors.muted }, "****")
+                  ? e(Text, { color: colors.muted }, mask(env[k]))
                   : e(Text, { color: colors.primary }, env[k])
               )
             ),
