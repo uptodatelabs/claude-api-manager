@@ -1,7 +1,7 @@
 {
   "name": "claude-api-manager",
-  "version": "1.0.0",
-  "description": "Manage multiple Claude Code API configurations and switch between them",
+  "version": "2.0.0",
+  "description": "Manage multiple Claude Code API configurations with a TUI dashboard",
   "main": "src/manager.js",
   "bin": {
     "cam": "./bin/cli.js"
@@ -13,12 +13,17 @@
     "claude",
     "api",
     "settings",
-    "manager"
+    "manager",
+    "tui"
   ],
   "license": "MIT",
   "dependencies": {
     "chalk": "^4.1.2",
     "commander": "^11.1.0",
-    "inquirer": "^8.2.6"
+    "ink": "^5.0.1",
+    "ink-select-input": "^6.0.0",
+    "ink-spinner": "^5.0.0",
+    "ink-text-input": "^6.0.0",
+    "react": "^18.2.0"
   }
 }
