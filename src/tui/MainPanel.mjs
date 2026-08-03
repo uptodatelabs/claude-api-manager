@@ -4,7 +4,7 @@ import { Box, Text } from "ink";
 import ProfileDetail from "./ProfileDetail.mjs";
 import DiffView from "./DiffView.mjs";
 import { FormStep } from "./ProfileForm.mjs";
-import { theme } from "./theme.mjs";
+import { colors } from "./theme.mjs";
 
 const e = React.createElement;
 
@@ -44,18 +44,18 @@ export default function MainPanel({ view, profile, currentSettings, formState })
         e(
           Box,
           { marginBottom: 2 },
-          e(Text, { color: "cyan" }, "✦"),
+          e(Text, { color: colors.cyan }, "✦"),
           e(Text, null, " "),
-          e(Text, { color: "cyan", bold: true }, "Claude API Manager")
+          e(Text, { color: colors.cyan, bold: true }, "Claude API Manager")
         ),
         e(
           Box,
           { flexDirection: "column", alignItems: "center" },
-          e(Text, { color: "gray" }, "  ← 좌측에서 프로필 선택"),
+          e(Text, { color: colors.muted }, "  ← 좌측에서 프로필 선택"),
           e(Text, null, " "),
-          e(Text, { color: "gray" }, "  [n] 새 프로필 추가"),
-          e(Text, { color: "gray" }, "  [c] settings.json → 프로필"),
-          e(Text, { color: "gray" }, "  [?] 도움말")
+          e(Text, { color: colors.muted }, "  [n] 새 프로필 추가"),
+          e(Text, { color: colors.muted }, "  [c] settings.json → 프로필"),
+          e(Text, { color: colors.muted }, "  [?] 도움말")
         )
       );
   }

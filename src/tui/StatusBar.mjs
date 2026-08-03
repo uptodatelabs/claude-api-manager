@@ -1,28 +1,28 @@
 "use strict";
 import React from "react";
 import { Box, Text } from "ink";
-import { theme } from "./theme.mjs";
+import { colors } from "./theme.mjs";
 
 const e = React.createElement;
 
 export default function StatusBar({ activeProfile, view, mode, message }) {
   const parts = [
-    e(Text, null, theme.brand("✦ Claude API Manager")),
-    e(Text, { color: "gray" }, "│"),
+    e(Text, { color: colors.brand, bold: true }, "✦ Claude API Manager"),
+    e(Text, { color: colors.muted }, "│"),
     activeProfile
       ? e(
           Text,
           null,
-          e(Text, { color: "gray" }, "active: "),
-          e(Text, { color: "green" }, activeProfile)
+          e(Text, { color: colors.muted }, "active: "),
+          e(Text, { color: colors.success }, activeProfile)
         )
-      : e(Text, { color: "gray" }, "active: -"),
-    e(Text, { color: "gray" }, "│"),
+      : e(Text, { color: colors.muted }, "active: -"),
+    e(Text, { color: colors.muted }, "│"),
     e(
       Text,
       null,
-      e(Text, { color: "gray" }, "view: "),
-      e(Text, { color: "cyan" }, view)
+      e(Text, { color: colors.muted }, "view: "),
+      e(Text, { color: colors.primary }, view)
     ),
   ];
 
@@ -31,19 +31,24 @@ export default function StatusBar({ activeProfile, view, mode, message }) {
       e(
         Text,
         null,
-        e(Text, { color: "gray" }, "│ "),
-        e(Text, { color: "yellow" }, mode)
+        e(Text, { color: colors.muted }, "│ "),
+        e(Text, { color: colors.warning }, mode)
       )
     );
   }
 
   if (message) {
+    const msgColor = message.type === "success"
+      ? colors.success
+      : message.type === "danger"
+      ? colors.danger
+      : colors.info;
     parts.push(
       e(
         Text,
         null,
-        e(Text, { color: "gray" }, "│ "),
-        e(Text, { color: "blue" }, message)
+        e(Text, { color: colors.muted }, "│ "),
+        e(Text, { color: msgColor }, message.text)
       )
     );
   }

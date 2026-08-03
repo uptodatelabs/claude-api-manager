@@ -1,7 +1,7 @@
 "use strict";
 import React from "react";
 import { Box, Text } from "ink";
-import { theme, mask, providerName, detectProvider } from "./theme.mjs";
+import { colors, mask, providerName, detectProvider } from "./theme.mjs";
 
 const e = React.createElement;
 
@@ -9,9 +9,18 @@ function isSensitive(key) {
   return /KEY|SECRET|TOKEN|PASSWORD/.test(key);
 }
 
-function formatValue(key, value) {
-  if (isSensitive(key)) return theme.muted(mask(value));
-  return theme.primary(value);
+function EnvRow({ keyName, value }) {
+  const masked = isSensitive(keyName);
+  return e(
+    Box,
+    null,
+    e(Text, { color: colors.muted }, "  "),
+    e(Text, { color: "cyan" }, keyName.padEnd(35, " ")),
+    e(Text, null, " = "),
+    masked
+      ? e(Text, { color: colors.muted }, mask(value))
+      : e(Text, { color: colors.primary }, value)
+  );
 }
 
 export default function ProfileDetail({ profile, isActive }) {
@@ -19,11 +28,15 @@ export default function ProfileDetail({ profile, isActive }) {
     return e(
       Box,
       { flexDirection: "column", paddingX: 1 },
-      e(Box, { marginBottom: 1 }, e(Text, null, theme.brand("✦ Profile Detail"))),
+      e(
+        Box,
+        { marginBottom: 1 },
+        e(Text, { color: colors.brand, bold: true }, "✦ Profile Detail")
+      ),
       e(
         Box,
         { paddingY: 2, paddingX: 2, borderStyle: "round", borderColor: "gray" },
-        e(Text, { color: "gray" }, "프로파일을 선택하세요")
+        e(Text, { color: colors.muted }, "프로파일을 선택하세요")
       )
     );
   }
@@ -47,20 +60,20 @@ export default function ProfileDetail({ profile, isActive }) {
       e(
         Box,
         null,
-        e(Text, null, theme.brand("✦ ")),
-        e(Text, null, theme.primary.bold(profile.name)),
+        e(Text, { color: colors.brand }, "✦ "),
+        e(Text, { color: colors.primary, bold: true }, profile.name),
         isActive
-          ? e(Text, { backgroundColor: "green", color: "white" }, " ACTIVE ")
+          ? e(Text, { backgroundColor: colors.success, color: "white" }, " ACTIVE ")
           : e(Text, { backgroundColor: "gray", color: "white" }, " INACTIVE ")
       ),
-      e(Text, { color: "gray" }, providerName(provider))
+      e(Text, { color: colors.muted }, providerName(provider))
     ),
 
     profile.description
       ? e(
           Box,
           { marginBottom: 1 },
-          e(Text, { color: "gray" }, "설명: "),
+          e(Text, { color: colors.muted }, "설명: "),
           e(Text, null, profile.description)
         )
       : null,
@@ -69,12 +82,12 @@ export default function ProfileDetail({ profile, isActive }) {
       ? e(
           Box,
           { marginBottom: 1 },
-          e(Text, { color: "gray" }, "태그: "),
+          e(Text, { color: colors.muted }, "태그: "),
           ...profile.tags.map((t, i) =>
             e(
               React.Fragment,
               { key: i },
-              e(Text, { backgroundColor: "yellow", color: "black" }, " " + t + " "),
+              e(Text, { backgroundColor: colors.warning, color: "black" }, " " + t + " "),
               e(Text, null, " ")
             )
           )
@@ -85,10 +98,10 @@ export default function ProfileDetail({ profile, isActive }) {
       ? e(
           Box,
           { marginBottom: 1 },
-          e(Text, { color: "gray" }, "마지막 적용: "),
+          e(Text, { color: colors.muted }, "마지막 적용: "),
           e(Text, null, profile.lastApplied),
           profile.applyCount
-            ? e(Text, { color: "gray" }, " (" + profile.applyCount + "회)")
+            ? e(Text, { color: colors.muted }, " (" + profile.applyCount + "회)")
             : null
         )
       : null,
@@ -96,27 +109,18 @@ export default function ProfileDetail({ profile, isActive }) {
     e(
       Box,
       { marginTop: 1, marginBottom: 1 },
-      e(Text, null, theme.brand("─ Environment Variables ─"))
+      e(Text, { color: colors.brand }, "─ Environment Variables ─")
     ),
 
     keys.length === 0
-      ? e(Text, { color: "gray" }, "  (없음)")
-      : keys.map((k, i) =>
-          e(
-            Box,
-            { key: i },
-            e(Text, { color: "gray" }, "  "),
-            e(Text, { color: "cyan" }, k.padEnd(35, " ")),
-            e(Text, null, " = "),
-            formatValue(k, env[k])
-          )
-        ),
+      ? e(Text, { color: colors.muted }, "  (없음)")
+      : keys.map((k, i) => e(EnvRow, { key: i, keyName: k, value: env[k] })),
 
     profile.model
       ? e(
           Box,
           { marginTop: 1 },
-          e(Text, { color: "yellow" }, "model:        "),
+          e(Text, { color: colors.warning }, "model:        "),
           e(Text, null, profile.model)
         )
       : null,
@@ -125,7 +129,7 @@ export default function ProfileDetail({ profile, isActive }) {
       ? e(
           Box,
           null,
-          e(Text, { color: "yellow" }, "fallbackModel:"),
+          e(Text, { color: colors.warning }, "fallbackModel:"),
           e(
             Text,
             null,

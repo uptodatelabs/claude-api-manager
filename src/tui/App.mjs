@@ -46,8 +46,8 @@ export default function App() {
     reload();
   }, []);
 
-  const flash = (msg) => {
-    setMessage(msg);
+  const flash = (text, type = "info") => {
+    setMessage({ text, type });
     setTimeout(() => setMessage(null), 2500);
   };
 
@@ -110,10 +110,10 @@ export default function App() {
     if (input === "d" && selectedProfile) {
       try {
         manager.removeProfile(selectedProfile.name);
-        flash(theme.success(`✓ "${selectedProfile.name}" 삭제됨`));
+        flash(`✓ "${selectedProfile.name}" 삭제됨`, "success");
         reload();
       } catch (err) {
-        flash(theme.danger(`✗ ${err.message}`));
+        flash(`✗ ${err.message}`, "danger");
       }
     }
     if (input === "n") {
@@ -150,11 +150,11 @@ export default function App() {
       if (!selectedProfile) return;
       try {
         manager.applyProfile(selectedProfile.name);
-        flash(theme.success(`✓ "${selectedProfile.name}" 적용됨`));
+        flash(`✓ "${selectedProfile.name}" 적용됨`, "success");
         reload();
         setView("detail");
       } catch (err) {
-        flash(theme.danger(`✗ ${err.message}`));
+        flash(`✗ ${err.message}`, "danger");
         setView("detail");
       }
     } else if (key.escape || input === "n") {
@@ -200,11 +200,11 @@ export default function App() {
             description,
             tags
           );
-          flash(theme.success(`✓ "${editingProfile.name}" 수정됨`));
+          flash(`✓ "${editingProfile.name}" 수정됨`, "success");
         } else {
           const name = editingProfile ? editingProfile.name : `profile-${Date.now()}`;
           manager.addProfile(name, env, model, fallback, description, tags);
-          flash(theme.success(`✓ "${name}" 추가됨`));
+          flash(`✓ "${name}" 추가됨`, "success");
         }
         reload();
         setView("detail");
@@ -212,7 +212,7 @@ export default function App() {
         setFormData({ provider: "anthropic" });
         setEditingProfile(null);
       } catch (err) {
-        flash(theme.danger(`✗ ${err.message}`));
+        flash(`✗ ${err.message}`, "danger");
       }
     } else {
       setFormStepIdx(formStepIdx + 1);

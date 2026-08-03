@@ -1,7 +1,7 @@
 "use strict";
 import React from "react";
 import { Box, Text } from "ink";
-import { theme, mask } from "./theme.mjs";
+import { colors, mask } from "./theme.mjs";
 
 const e = React.createElement;
 
@@ -68,15 +68,15 @@ export default function DiffView({ profile, current }) {
     e(
       Box,
       { marginBottom: 1 },
-      e(Text, null, theme.warning.bold("⚡ Diff Preview")),
-      e(Text, { color: "gray" }, " (apply 시 settings.json 변경 사항)")
+      e(Text, { color: colors.warning, bold: true }, "⚡ Diff Preview"),
+      e(Text, { color: colors.muted }, " (apply 시 settings.json 변경 사항)")
     ),
 
     isEmpty
       ? e(
           Box,
           { paddingY: 1 },
-          e(Text, { color: "green" }, "  변경 사항 없음")
+          e(Text, { color: colors.success }, "  변경 사항 없음")
         )
       : null,
 
@@ -84,10 +84,14 @@ export default function DiffView({ profile, current }) {
       e(
         Box,
         { key: "a" + i },
-        e(Text, { color: "green" }, "  + "),
-        e(Text, { color: "green" }, it.key),
+        e(Text, { color: colors.success }, "  + "),
+        e(Text, { color: colors.success }, it.key),
         e(Text, null, " = "),
-        e(Text, { color: "green" }, isSensitive(it.key) ? mask(it.value) : it.value)
+        e(
+          Text,
+          { color: colors.success },
+          isSensitive(it.key) ? mask(it.value) : it.value
+        )
       )
     ),
 
@@ -95,10 +99,14 @@ export default function DiffView({ profile, current }) {
       e(
         Box,
         { key: "r" + i },
-        e(Text, { color: "red" }, "  - "),
-        e(Text, { color: "red" }, it.key),
+        e(Text, { color: colors.danger }, "  - "),
+        e(Text, { color: colors.danger }, it.key),
         e(Text, null, " = "),
-        e(Text, { color: "red" }, isSensitive(it.key) ? mask(it.value) : it.value)
+        e(
+          Text,
+          { color: colors.danger },
+          isSensitive(it.key) ? mask(it.value) : it.value
+        )
       )
     ),
 
@@ -109,20 +117,28 @@ export default function DiffView({ profile, current }) {
         e(
           Box,
           null,
-          e(Text, { color: "yellow" }, "  ~ "),
-          e(Text, { color: "yellow" }, it.key)
+          e(Text, { color: colors.warning }, "  ~ "),
+          e(Text, { color: colors.warning }, it.key)
         ),
         e(
           Box,
           { paddingLeft: 5 },
-          e(Text, { color: "red" }, "- "),
-          e(Text, { color: "red" }, isSensitive(it.key) ? mask(it.oldValue) : it.oldValue)
+          e(Text, { color: colors.danger }, "- "),
+          e(
+            Text,
+            { color: colors.danger },
+            isSensitive(it.key) ? mask(it.oldValue) : it.oldValue
+          )
         ),
         e(
           Box,
           { paddingLeft: 5 },
-          e(Text, { color: "green" }, "+ "),
-          e(Text, { color: "green" }, isSensitive(it.key) ? mask(it.value) : it.value)
+          e(Text, { color: colors.success }, "+ "),
+          e(
+            Text,
+            { color: colors.success },
+            isSensitive(it.key) ? mask(it.value) : it.value
+          )
         )
       )
     ),
@@ -134,20 +150,20 @@ export default function DiffView({ profile, current }) {
         e(
           Box,
           null,
-          e(Text, { color: "yellow" }, "  ~ "),
-          e(Text, { color: "yellow" }, it.key)
+          e(Text, { color: colors.warning }, "  ~ "),
+          e(Text, { color: colors.warning }, it.key)
         ),
         e(
           Box,
           { paddingLeft: 5 },
-          e(Text, { color: "red" }, "- "),
-          e(Text, { color: "red" }, it.oldValue)
+          e(Text, { color: colors.danger }, "- "),
+          e(Text, { color: colors.danger }, it.oldValue)
         ),
         e(
           Box,
           { paddingLeft: 5 },
-          e(Text, { color: "green" }, "+ "),
-          e(Text, { color: "green" }, it.newValue)
+          e(Text, { color: colors.success }, "+ "),
+          e(Text, { color: colors.success }, it.newValue)
         )
       )
     ),
@@ -155,7 +171,7 @@ export default function DiffView({ profile, current }) {
     e(
       Box,
       { marginTop: 1 },
-      e(Text, { color: "gray" }, "  [Enter] 적용   [Esc] 취소")
+      e(Text, { color: colors.muted }, "  [Enter] 적용   [Esc] 취소")
     )
   );
 }

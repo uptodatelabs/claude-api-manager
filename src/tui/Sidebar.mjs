@@ -2,24 +2,25 @@
 import React from "react";
 import { Box, Text } from "ink";
 import TextInput from "ink-text-input";
-import { theme, mask, providerName, detectProvider } from "./theme.mjs";
+import { colors, mask, providerName, detectProvider } from "./theme.mjs";
 
 const e = React.createElement;
 
 function SidebarItem({ profile, isSelected, isFocused }) {
   const provider = detectProvider(profile.env);
   const indicator = isSelected
-    ? isFocused
-      ? theme.brand("▶ ")
-      : theme.primary("▶ ")
+    ? isFocused ? "▶ " : "▶ "
     : "  ";
-  const activeMark = profile.isActive ? theme.success("●") : theme.muted("○");
-  const name =
-    isSelected && isFocused ? theme.brand(profile.name) : theme.primary(profile.name);
+  const indicatorColor = isSelected
+    ? isFocused ? colors.brand : colors.primary
+    : colors.muted;
+  const activeMark = profile.isActive ? "●" : "○";
+  const activeColor = profile.isActive ? colors.success : colors.muted;
+  const nameColor = isSelected && isFocused ? colors.brand : colors.primary;
 
   const tags =
     profile.tags && profile.tags.length > 0
-      ? e(Text, { color: "yellow" }, " [" + profile.tags.join(",") + "]")
+      ? e(Text, { color: colors.yellow }, " [" + profile.tags.join(",") + "]")
       : null;
 
   return e(
@@ -28,18 +29,18 @@ function SidebarItem({ profile, isSelected, isFocused }) {
     e(
       Box,
       null,
-      e(Text, null, indicator),
-      e(Text, null, activeMark + " "),
-      e(Text, null, name),
+      e(Text, { color: indicatorColor }, indicator),
+      e(Text, { color: activeColor }, activeMark + " "),
+      e(Text, { color: nameColor, bold: isSelected && isFocused }, profile.name),
       tags
     ),
     e(
       Box,
       null,
-      e(Text, { color: "gray" }, "    " + providerName(provider))
+      e(Text, { color: colors.muted }, "    " + providerName(provider))
     ),
     profile.env.ANTHROPIC_BASE_URL
-      ? e(Box, null, e(Text, { color: "gray" }, "    " + profile.env.ANTHROPIC_BASE_URL))
+      ? e(Box, null, e(Text, { color: colors.muted }, "    " + profile.env.ANTHROPIC_BASE_URL))
       : null
   );
 }
@@ -82,8 +83,8 @@ export default function Sidebar({
     e(
       Box,
       { marginBottom: 1 },
-      e(Text, null, theme.brand("✦ Profiles")),
-      e(Text, { color: "gray" }, " (" + list.length + "/" + profiles.length + ")")
+      e(Text, { color: colors.brand, bold: true }, "✦ Profiles"),
+      e(Text, { color: colors.muted }, " (" + list.length + "/" + profiles.length + ")")
     ),
     e(
       Box,
@@ -97,7 +98,7 @@ export default function Sidebar({
           })
         : e(
             Text,
-            { color: "gray" },
+            { color: colors.muted },
             e(Text, { backgroundColor: "gray", color: "white" }, " / "),
             e(Text, null, " 검색 또는 이름 입력")
           )
@@ -117,7 +118,7 @@ export default function Sidebar({
       ? e(
           Box,
           { paddingY: 1 },
-          e(Text, { color: "yellow" }, "  일치하는 프로필 없음")
+          e(Text, { color: colors.warning }, "  일치하는 프로필 없음")
         )
       : null
   );

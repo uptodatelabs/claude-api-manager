@@ -1,7 +1,7 @@
 "use strict";
 import React from "react";
 import { Box, Text } from "ink";
-import { theme } from "./theme.mjs";
+import { colors } from "./theme.mjs";
 
 const e = React.createElement;
 
@@ -9,8 +9,8 @@ function Key({ label, keyName }) {
   return e(
     Box,
     { marginRight: 1 },
-    e(Text, { backgroundColor: "gray", color: "white" }, " ", keyName, " "),
-    e(Text, { color: "gray" }, " " + label)
+    e(Text, { backgroundColor: colors.bgGray, color: "white" }, " " + keyName + " "),
+    e(Text, { color: colors.muted }, " " + label)
   );
 }
 

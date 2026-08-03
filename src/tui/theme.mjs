@@ -1,31 +1,38 @@
 import chalk from "chalk";
 
+// chalk 헬퍼 (색상만 반환)
+const c = (hex) => chalk.hex(hex);
+const cBg = (hex) => chalk.bgHex(hex);
+
+// 색상 이름 (React/Ink용 color prop)
+export const colors = {
+  brand: "#D97757",
+  primary: "#5EEAD4",
+  success: "#22C55E",
+  warning: "#FACC15",
+  danger: "#EF4444",
+  info: "#60A5FA",
+  muted: "gray",
+  subtle: "#6B7280",
+  yellow: "#FACC15",
+  cyan: "#5EEAD4",
+  green: "#22C55E",
+  red: "#EF4444",
+  blue: "#60A5FA",
+  bgGray: "gray",
+};
+
+// chalk 기반 렌더링 (이미 색이 적용된 문자열, Text 없이 사용 불가)
+// → 권장: colors 객체를 사용하고 Text의 color prop으로 적용
 export const theme = {
-  brand: chalk.hex("#D97757").bold,
-  brandDim: chalk.hex("#D97757"),
-  primary: chalk.hex("#5EEAD4"),
-  primaryDim: chalk.hex("#5EEAD4").dim,
-  success: chalk.hex("#22C55E"),
-  successDim: chalk.hex("#22C55E").dim,
-  warning: chalk.hex("#FACC15"),
-  danger: chalk.hex("#EF4444"),
-  dangerDim: chalk.hex("#EF4444").dim,
-  info: chalk.hex("#60A5FA"),
-  muted: chalk.gray,
-  subtle: chalk.hex("#6B7280"),
-  highlight: chalk.bgHex("#D97757").hex("#1F2937").bold,
-  selected: chalk.hex("#5EEAD4").bold,
-  separator: chalk.hex("#374151"),
-  border: chalk.hex("#4B5563"),
-  borderActive: chalk.hex("#5EEAD4"),
-  background: chalk.bgHex("#0F172A"),
-  panelBg: chalk.bgHex("#1E293B"),
-  yellow: chalk.hex("#FACC15"),
-  cyan: chalk.hex("#5EEAD4"),
-  gray: chalk.hex("#6B7280"),
-  green: chalk.hex("#22C55E"),
-  red: chalk.hex("#EF4444"),
-  bold: chalk.bold,
+  brand: (s) => chalk.hex("#D97757").bold(s),
+  primary: (s) => chalk.hex("#5EEAD4")(s),
+  muted: (s) => chalk.gray(s),
+  subtle: (s) => chalk.hex("#6B7280")(s),
+  warning: (s) => chalk.hex("#FACC15")(s),
+  danger: (s) => chalk.hex("#EF4444")(s),
+  info: (s) => chalk.hex("#60A5FA")(s),
+  success: (s) => chalk.hex("#22C55E")(s),
 };
 
 export function mask(value) {

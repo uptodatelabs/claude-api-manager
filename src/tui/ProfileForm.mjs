@@ -3,7 +3,7 @@ import React from "react";
 import { Box, Text } from "ink";
 import TextInput from "ink-text-input";
 import SelectInput from "ink-select-input";
-import { theme, providerName } from "./theme.mjs";
+import { colors } from "./theme.mjs";
 
 const e = React.createElement;
 
@@ -22,8 +22,10 @@ export function Field({ label, value, onChange, placeholder, isEdit, hasExisting
     e(
       Box,
       null,
-      e(Text, { color: "cyan" }, label),
-      hasExisting && isEdit ? e(Text, { color: "red" }, " (- 입력 시 삭제)") : null
+      e(Text, { color: colors.primary }, label),
+      hasExisting && isEdit
+        ? e(Text, { color: colors.danger }, " (- 입력 시 삭제)")
+        : null
     ),
     e(TextInput, { value, onChange, placeholder, focus })
   );
@@ -131,15 +133,29 @@ export function FormStep({ step, formData, setFormData, onNext, onPrev, isEdit }
 
   return e(
     Box,
-    { flexDirection: "column", borderStyle: "round", borderColor: "cyan", paddingX: 1, flexGrow: 1 },
+    {
+      flexDirection: "column",
+      borderStyle: "round",
+      borderColor: "cyan",
+      paddingX: 1,
+      flexGrow: 1,
+    },
     e(
       Box,
       { marginBottom: 1, justifyContent: "space-between" },
-      e(Text, null, theme.brand(isEdit ? "✎ Edit Profile" : "✦ New Profile")),
-      e(Text, { color: "gray" }, title)
+      e(
+        Text,
+        { color: colors.brand, bold: true },
+        isEdit ? "✎ Edit Profile" : "✦ New Profile"
+      ),
+      e(Text, { color: colors.muted }, title)
     ),
     body,
-    e(Box, { marginTop: 1 }, e(Text, { color: "gray" }, "[Enter] 다음   [Esc] 취소"))
+    e(
+      Box,
+      { marginTop: 1 },
+      e(Text, { color: colors.muted }, "[Enter] 다음   [Esc] 취소")
+    )
   );
 }
 
