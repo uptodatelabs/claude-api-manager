@@ -186,6 +186,14 @@ MIT
 
 ---
 
+## Support
+
+If you find Claude API Manager useful, consider supporting the project:
+
+[![Ko-fi](https://img.shields.io/badge/Ko--fi-FF5E5B?style=for-the-badge&logo=ko-fi&logoColor=white)](https://ko-fi.com/uptodatelabs) [![GitHub Sponsors](https://img.shields.io/badge/Sponsor-ClaudeAPI-ea4aaa?style=for-the-badge&logo=githubsponsors&logoColor=white)](https://github.com/sponsors/uptodatelabs)
+
+---
+
 ## 한국어
 
 ### 개요
@@ -359,3 +367,11 @@ cam import -f backup.json      # 기존 프로필 덮어쓰기
 ### 라이선스
 
 MIT
+
+---
+
+## 후원
+
+Claude API Manager가 유용하다면 프로젝트 후원을 고려해 주세요:
+
+[![Ko-fi](https://img.shields.io/badge/Ko--fi-FF5E5B?style=for-the-badge&logo=ko-fi&logoColor=white)](https://ko-fi.com/uptodatelabs) [![GitHub Sponsors](https://img.shields.io/badge/Sponsor-ClaudeAPI-ea4aaa?style=for-the-badge&logo=githubsponsors&logoColor=white)](https://github.com/sponsors/uptodatelabs)
