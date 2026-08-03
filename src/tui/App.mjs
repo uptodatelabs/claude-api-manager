@@ -334,12 +334,20 @@ export default function App() {
     }
   };
 
+  const cancelForm = () => {
+    setView("detail");
+    setEditingProfile(null);
+    setFormStepIdx(0);
+    setFormData({ provider: "anthropic" });
+  };
+
   const formState = {
     step: formStepName,
     formData,
     setFormData,
     onNext: goFormNext,
     onPrev: goFormPrev,
+    onCancel: cancelForm,
     isEdit,
   };
 

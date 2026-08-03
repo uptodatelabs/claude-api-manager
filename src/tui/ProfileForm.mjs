@@ -1,6 +1,6 @@
 "use strict";
 import React from "react";
-import { Box, Text } from "ink";
+import { Box, Text, useInput } from "ink";
 import TextInput from "ink-text-input";
 import SelectInput from "ink-select-input";
 import { colors } from "./theme.mjs";
@@ -31,8 +31,15 @@ export function Field({ label, value, onChange, placeholder, isEdit, hasExisting
   );
 }
 
-export function FormStep({ step, formData, setFormData, onNext, onPrev, isEdit }) {
+export function FormStep({ step, formData, setFormData, onNext, onPrev, onCancel, isEdit }) {
   const set = (patch) => setFormData({ ...formData, ...patch });
+
+  // 폼 안에서 Esc로 취소
+  useInput((input, key) => {
+    if (key.escape && onCancel) {
+      onCancel();
+    }
+  });
 
   let body;
   let title;
