@@ -28,11 +28,60 @@ export default function MainPanel({
   onRenameChange,
   onRenameSubmit,
   settingsContent,
+  pathValue,
+  onPathChange,
+  onPathSubmit,
 }) {
   // 포커스 시 borderColor: cyan, 비포커스 시 gray
   const activeBorder = focus ? "cyan" : "gray";
 
   const mainContent = (() => {
+    // 경로 변경 프롬프트
+    if (view === "path-prompt") {
+      return e(
+        Box,
+        {
+          flexDirection: "column",
+          borderStyle: "round",
+          borderColor: activeBorder,
+          paddingX: 2,
+          paddingY: 2,
+          flexGrow: 1,
+        },
+        e(
+          Box,
+          { marginBottom: 1 },
+          e(Text, { color: colors.primary, bold: true }, "⚙ settings.json 경로 변경")
+        ),
+        e(
+          Box,
+          { marginBottom: 1 },
+          e(Text, { color: colors.muted }, "현재 경로: "),
+          e(Text, { color: colors.info }, manager.getSettingsPath())
+        ),
+        e(
+          Box,
+          { marginBottom: 1 },
+          e(Text, { color: colors.muted }, "새 경로: ")
+        ),
+        e(TextInput, {
+          value: pathValue,
+          onChange: onPathChange,
+          onSubmit: onPathSubmit,
+          placeholder: manager.getSettingsPath(),
+        }),
+        e(
+          Box,
+          { marginTop: 1 },
+          e(
+            Text,
+            { color: colors.muted },
+            "[Enter] 변경  [Esc] 취소"
+          )
+        )
+      );
+    }
+
     // 이름 변경 프롬프트
     if (view === "rename-prompt") {
       return e(
@@ -103,6 +152,11 @@ export default function MainPanel({
         e(
           Box,
           { marginBottom: 1 },
+          e(Text, { color: colors.muted }, "[p] 경로 변경")
+        ),
+        e(
+          Box,
+          { marginBottom: 1 },
           e(Text, { color: colors.brand, bold: true }, "─ env ─")
         ),
         keys.length === 0
@@ -114,7 +168,7 @@ export default function MainPanel({
                 e(Text, { color: "cyan" }, k.padEnd(35, " ")),
                 e(Text, null, " = "),
                 /KEY|SECRET|TOKEN/.test(k)
-                  ? e(Text, { color: colors.muted }, mask(k === "ANTHROPIC_API_KEY" ? env[k] : "****"))
+                  ? e(Text, { color: colors.muted }, "****")
                   : e(Text, { color: colors.primary }, env[k])
               )
             ),

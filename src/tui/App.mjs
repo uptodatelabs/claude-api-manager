@@ -36,6 +36,7 @@ export default function App() {
   const [renameTarget, setRenameTarget] = useState(null);
   const [renameValue, setRenameValue] = useState("");
   const [settingsContent, setSettingsContent] = useState(null);
+  const [pathValue, setPathValue] = useState("");
 
   // useRef로 최신 상태를 항상 참조 (useInput 클로저 stale 문제 해결)
   const stateRef = useRef({});
@@ -149,6 +150,17 @@ export default function App() {
     if (s.view === "settings-view") {
       if (key.escape || input === "q" || input === "s") {
         setView("detail");
+      } else if (input === "p") {
+        setPathValue(manager.getSettingsPath());
+        setView("path-prompt");
+      }
+      return;
+    }
+
+    // 경로 변경 프롬프트
+    if (s.view === "path-prompt") {
+      if (key.escape) {
+        setView("settings-view");
       }
       return;
     }
@@ -477,6 +489,23 @@ export default function App() {
             setRenameTarget(null);
             setRenameValue("");
             setView("detail");
+          },
+          pathValue,
+          onPathChange: (v) => setPathValue(v),
+          onPathSubmit: () => {
+            const newPath = pathValue.trim();
+            if (!newPath) {
+              setView("settings-view");
+              return;
+            }
+            try {
+              manager.setSettingsPath(newPath);
+              flash(`✓ 경로 변경됨: ${newPath}`, "success");
+              setSettingsContent(manager.readSettings());
+            } catch (err) {
+              flash(`✗ ${err.message}`, "danger");
+            }
+            setView("settings-view");
           },
         })
       )
