@@ -170,7 +170,7 @@ export default function Sidebar({
       Box,
       { marginBottom: 1, flexShrink: 0 },
       e(Text, { color: colors.brand, bold: true }, "✦ Profiles"),
-      e(Text, { color: colors.muted }, " (" + list.length + "/" + profiles.length + ")")
+      e(Text, { color: colors.muted }, " (" + profiles.length + ")")
     ),
     e(
       Box,
