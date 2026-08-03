@@ -12,11 +12,15 @@ const e = React.createElement;
 const HEIGHT_OFFSET = 5; // StatusBar(3) + Footer(2)
 
 export default function MainPanel({ view, profile, currentSettings, formState, scroll, focus }) {
+  // 포커스 시 borderColor: cyan, 비포커스 시 gray
+  const activeBorder = focus ? "cyan" : "gray";
+
   const mainContent = (() => {
     switch (view) {
       case "detail":
         return e(ProfileDetail, {
           profile,
+          borderColor: activeBorder,
           isActive:
             profile &&
             currentSettings &&
@@ -26,7 +30,7 @@ export default function MainPanel({ view, profile, currentSettings, formState, s
         });
 
       case "diff":
-        return e(DiffView, { profile, current: currentSettings });
+        return e(DiffView, { profile, current: currentSettings, borderColor: activeBorder });
 
       case "form":
         return e(FormStep, formState);
@@ -38,7 +42,7 @@ export default function MainPanel({ view, profile, currentSettings, formState, s
           {
             flexDirection: "column",
             borderStyle: "round",
-            borderColor: "gray",
+            borderColor: activeBorder,
             paddingX: 2,
             paddingY: 2,
             flexGrow: 1,
@@ -65,7 +69,7 @@ export default function MainPanel({ view, profile, currentSettings, formState, s
     }
   })();
 
-  // form, diff, empty는 스크롤 불필요
+  // form, empty는 스크롤 불필요
   if (view === "empty" || view === "form") {
     return e(
       Box,

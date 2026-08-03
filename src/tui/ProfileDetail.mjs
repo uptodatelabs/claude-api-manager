@@ -23,7 +23,7 @@ function EnvRow({ keyName, value }) {
   );
 }
 
-export default function ProfileDetail({ profile, isActive }) {
+export default function ProfileDetail({ profile, isActive, borderColor }) {
   if (!profile) {
     return e(
       Box,
@@ -35,13 +35,12 @@ export default function ProfileDetail({ profile, isActive }) {
       ),
       e(
         Box,
-        { paddingY: 2, paddingX: 2, borderStyle: "round", borderColor: "gray" },
+        { paddingY: 2, paddingX: 2, borderStyle: "round", borderColor: borderColor || "gray" },
         e(Text, { color: colors.muted }, "프로파일을 선택하세요")
       )
     );
   }
 
-  const provider = detectProvider(profile.env);
   const env = profile.env || {};
   const keys = Object.keys(env);
 
@@ -50,7 +49,7 @@ export default function ProfileDetail({ profile, isActive }) {
     {
       flexDirection: "column",
       borderStyle: "round",
-      borderColor: "cyan",
+      borderColor: borderColor || "cyan",
       paddingX: 1,
       flexGrow: 1,
     },

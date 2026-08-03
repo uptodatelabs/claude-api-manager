@@ -9,7 +9,7 @@ function isSensitive(key) {
   return /KEY|SECRET|TOKEN|PASSWORD/.test(key);
 }
 
-export default function DiffView({ profile, current }) {
+export default function DiffView({ profile, current, borderColor }) {
   const profileEnv = (profile && profile.env) || {};
   const currentEnv = (current && current.env) || {};
 
@@ -61,7 +61,7 @@ export default function DiffView({ profile, current }) {
     {
       flexDirection: "column",
       borderStyle: "round",
-      borderColor: "yellow",
+      borderColor: borderColor || "yellow",
       paddingX: 1,
       flexGrow: 1,
     },
