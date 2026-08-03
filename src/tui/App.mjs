@@ -138,6 +138,11 @@ export default function App() {
     if (s.focus === "sidebar") {
       if (key.upArrow) {
         setSelectedIndex((i) => Math.max(0, i - 1));
+        // selectedIndex가 scroll 위치와 같으면 scroll도 -1 (위로 스크롤)
+        setSidebarScroll((sc) => {
+          if (s.selectedIndex <= sc && sc > 0) return sc - 1;
+          return sc;
+        });
         setView("detail");
         setScrollOffset(0);
         return;
@@ -145,6 +150,12 @@ export default function App() {
       if (key.downArrow) {
         const max = Math.max(0, s.filtered.length - 1);
         setSelectedIndex((i) => Math.min(max, i + 1));
+        // selectedIndex가 가시 범위 마지막이면 scroll도 +1 (아래로 스크롤)
+        setSidebarScroll((sc) => {
+          const vis = Math.max(1, sidebarVisibleCount);
+          if (s.selectedIndex >= sc + vis - 1) return sc + 1;
+          return sc;
+        });
         setView("detail");
         setScrollOffset(0);
         return;
