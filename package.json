@@ -1,22 +1,43 @@
 {
   "name": "claude-api-manager",
   "version": "2.0.0",
-  "description": "Manage multiple Claude Code API configurations with a TUI dashboard",
+  "description": "TUI dashboard for managing Claude Code API configurations. Save multiple API profiles and switch providers with a keystroke.",
   "main": "src/manager.cjs",
   "bin": {
-    "cam": "./bin/cli.mjs"
+    "cam": "bin/cli.mjs"
   },
+  "files": [
+    "bin",
+    "src"
+  ],
   "scripts": {
-    "start": "node bin/cli.mjs"
+    "start": "node bin/cli.mjs",
+    "prepublishOnly": "node -e \"import('./src/tui/App.mjs').then(() => console.log('OK'))\""
   },
   "keywords": [
     "claude",
+    "claude-code",
     "api",
     "settings",
     "manager",
-    "tui"
+    "profile",
+    "tui",
+    "terminal",
+    "ink",
+    "anthropic"
   ],
   "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/uptodatelabs/claude-api-manager.git"
+  },
+  "homepage": "https://github.com/uptodatelabs/claude-api-manager",
+  "bugs": {
+    "url": "https://github.com/uptodatelabs/claude-api-manager/issues"
+  },
   "dependencies": {
     "chalk": "^4.1.2",
     "commander": "^11.1.0",
