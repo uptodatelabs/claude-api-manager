@@ -1,5 +1,7 @@
 # Claude API Manager
 
+[![npm version](https://img.shields.io/npm/v/claude-api-manager.svg)](https://www.npmjs.com/package/claude-api-manager) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) [![npm downloads](https://img.shields.io/npm/dm/claude-api-manager.svg)](https://www.npmjs.com/package/claude-api-manager)
+
 > TUI dashboard for managing Claude Code API configurations. Save multiple API profiles and switch between them with keyboard shortcuts — Ink (React-based), Claude Code style UI.
 
 > Claude Code의 API 설정을 관리하는 TUI 대시보드. 여러 API 프로필을 저장하고 키보드로 빠르게 전환할 수 있습니다. Ink(React 기반) + Claude Code 스타일 UI.
@@ -37,6 +39,15 @@ Claude API Manager is a TUI (terminal UI) dashboard that manages the API configu
 - **CLI compatibility** — All operations also available as one-line commands
 
 ### Quick Start
+
+**Install from npm (recommended):**
+
+```bash
+npm install -g claude-api-manager
+cam          # Launch TUI (no arguments)
+```
+
+**Or from source:**
 
 ```bash
 git clone https://github.com/uptodatelabs/claude-api-manager.git
@@ -221,6 +232,15 @@ Claude API Manager는 Claude Code의 `settings.json`에 있는 API 설정을 관
 - **CLI 호환** — 모든 작업을 한 줄 명령어로도 수행 가능
 
 ### 빠른 시작
+
+**npm 설치 (권장):**
+
+```bash
+npm install -g claude-api-manager
+cam          # 인자 없이 실행 → TUI 진입
+```
+
+**또는 소스에서:**
 
 ```bash
 git clone https://github.com/uptodatelabs/claude-api-manager.git
