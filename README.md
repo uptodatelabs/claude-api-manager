@@ -142,7 +142,7 @@ Connect OpenAI-compatible APIs (Ollama, LiteLLM, Groq, etc.) to Claude Code thro
 1. Select a profile with `ANTHROPIC_BASE_URL` pointing to an OpenAI-compatible API
 2. Press `p` to start the proxy
 3. Status bar shows `⚡ profile:port`
-4. Press `p` again to stop
+4. Press `p` again to stop (settings.json is automatically restored)
 
 **From CLI:**
 
@@ -151,10 +151,16 @@ cam proxy <profile-name>              # Start proxy on default port 3456
 cam proxy <profile-name> --port 5678  # Custom port
 ```
 
+The proxy automatically:
+1. **Backs up** your current `settings.json`
+2. **Sets** `ANTHROPIC_BASE_URL=http://127.0.0.1:<port>` in `settings.json`
+3. **Starts** the proxy server
+4. **Restores** the original `settings.json` when stopped
+
 Then in another terminal:
 
 ```bash
-ANTHROPIC_BASE_URL=http://127.0.0.1:3456 claude
+claude  # Claude Code will use the proxy automatically
 ```
 
 The proxy converts:
@@ -369,7 +375,7 @@ cam                # 인자 없이 실행 → TUI 진입
 1. `ANTHROPIC_BASE_URL`이 OpenAI 호환 API를 가리키는 프로필을 선택
 2. `p` 키로 프록시 시작
 3. 상태바에 `⚡ profile:port` 표시
-4. 다시 `p` 키로 프록시 중지
+4. 다시 `p` 키로 프록시 중지 (settings.json 자동 복구)
 
 **CLI에서:**
 
@@ -378,10 +384,16 @@ cam proxy <프로필-이름>              # 기본 포트 3456으로 프록시 �
 cam proxy <프로필-이름> --port 5678  # 커스텀 포트
 ```
 
+프록시가 자동으로 수행하는 작업:
+1. 현재 `settings.json` **백업**
+2. `ANTHROPIC_BASE_URL=http://127.0.0.1:<port>` **설정**
+3. 프록시 서버 **시작**
+4. 중지 시 원본 `settings.json` **복구**
+
 다른 터미널에서:
 
 ```bash
-ANTHROPIC_BASE_URL=http://127.0.0.1:3456 claude
+claude  # Claude Code가 자동으로 프록시를 사용
 ```
 
 프록시가 변환하는 내용:
