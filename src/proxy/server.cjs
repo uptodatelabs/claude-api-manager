@@ -30,7 +30,9 @@ class ProxyServer {
     if (this.upstreamFormat) return Promise.resolve(this.upstreamFormat);
     return new Promise((resolve) => {
       const base = this.targetUrl.replace(/\/+$/, "");
-      const targetUrl = new URL("/v1/messages", base);
+      // base가 /v1로 끝나면 중복 방지
+      const apiBase = base.endsWith("/v1") ? base : base + "/v1";
+      const targetUrl = new URL(apiBase + "/messages");
       const targetModule = targetUrl.protocol === "https:" ? https : http;
       const probeBody = JSON.stringify({
         model: this.model || "claude-sonnet-4-5",
@@ -220,7 +222,9 @@ class ProxyServer {
       openaiRequest.model = this.model;
     }
 
-    const targetUrl = new URL("/v1/chat/completions", this.targetUrl);
+    const base = this.targetUrl.replace(/\/+$/, "");
+    const apiBase = base.endsWith("/v1") ? base : base + "/v1";
+    const targetUrl = new URL(apiBase + "/chat/completions");
     const isStream = openaiRequest.stream;
 
     // 타겟 API로 요청
@@ -249,7 +253,9 @@ class ProxyServer {
   // Anthropic 형식 upstream으로 원본 요청 전달 (스트리밍 포함)
   passthrough(body, req, res) {
     return new Promise((resolve) => {
-      const targetUrl = new URL("/v1/messages", this.targetUrl);
+      const base = this.targetUrl.replace(/\/+$/, "");
+      const apiBase = base.endsWith("/v1") ? base : base + "/v1";
+      const targetUrl = new URL(apiBase + "/messages");
       const targetModule = targetUrl.protocol === "https:" ? https : http;
       const options = {
         hostname: targetUrl.hostname,
