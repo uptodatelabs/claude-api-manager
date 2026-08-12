@@ -435,7 +435,7 @@ export default function App() {
   const isEdit = !!editingProfile;
   const formStepName = (() => {
     const steps = formData.provider === "proxy"
-      ? ["provider", "proxy_keys", "meta", "custom"]
+      ? ["provider", "proxy_template", "proxy_keys", "meta", "custom"]
       : STEPS;
     return steps[formStepIdx];
   })();

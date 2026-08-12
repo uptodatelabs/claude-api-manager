@@ -96,7 +96,8 @@ export const translations = {
     escCancel: "[Esc] Cancel",
     enterNextEscCancel: "[Enter] Next  [Esc] Cancel",
     // proxy wizard
-    proxyKeysStep: "Step 2/3: OpenAI API Settings",
+    proxyTemplateStep: "Step 2/3: Proxy Template",
+    proxyKeysStep: "Step 3/3: OpenAI API Settings",
     proxyApiUrl: "OpenAI API URL",
     proxyApiUrlPlaceholder: "https://api.openai.com/v1",
     proxyApiKey: "API Key",
@@ -195,7 +196,8 @@ export const translations = {
     escCancel: "[Esc] 취소",
     enterNextEscCancel: "[Enter] 다음  [Esc] 취소",
     // proxy wizard
-    proxyKeysStep: "Step 2/3: OpenAI API 설정",
+    proxyTemplateStep: "Step 2/3: 프록시 템플릿",
+    proxyKeysStep: "Step 3/3: OpenAI API 설정",
     proxyApiUrl: "OpenAI API URL",
     proxyApiUrlPlaceholder: "https://api.openai.com/v1",
     proxyApiKey: "API 키",

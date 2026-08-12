@@ -78,6 +78,55 @@ const PROVIDER_LABELS = {
   proxy: "OpenAI Compatible (Proxy)",
 };
 
+// 프록시 템플릿
+const PROXY_TEMPLATES = [
+  {
+    label: "OpenAI (Direct)",
+    value: "openai",
+    data: {
+      ANTHROPIC_BASE_URL: "https://api.openai.com/v1",
+      ANTHROPIC_MODEL: "gpt-4o",
+      description: "OpenAI API direct",
+      tags: "proxy,openai",
+    },
+  },
+  {
+    label: "Ollama (Local)",
+    value: "ollama",
+    data: {
+      ANTHROPIC_BASE_URL: "http://localhost:11434/v1",
+      ANTHROPIC_API_KEY: "ollama",
+      description: "Ollama local server",
+      tags: "proxy,ollama,local",
+    },
+  },
+  {
+    label: "Groq",
+    value: "groq",
+    data: {
+      ANTHROPIC_BASE_URL: "https://api.groq.com/openai/v1",
+      ANTHROPIC_MODEL: "llama-3.3-70b-versatile",
+      description: "Groq API",
+      tags: "proxy,groq",
+    },
+  },
+  {
+    label: "LiteLLM (Proxy)",
+    value: "litellm",
+    data: {
+      ANTHROPIC_BASE_URL: "http://localhost:4000",
+      ANTHROPIC_API_KEY: "sk-your-litellm-key",
+      description: "LiteLLM proxy",
+      tags: "proxy,litellm",
+    },
+  },
+  {
+    label: "Custom",
+    value: "custom",
+    data: {},
+  },
+];
+
 export function FormStep({ step, formData, setFormData, onNext, onPrev, onCancel, isEdit }) {
   const { t } = useI18n();
   const set = (patch) => setFormData({ ...formData, ...patch });
@@ -177,6 +226,26 @@ export function FormStep({ step, formData, setFormData, onNext, onPrev, onCancel
       })),
       onSelect: (item) => {
         set({ provider: item.value });
+        // 프록시 선택 시 템플릿 선택 단계로 이동
+        if (item.value === "proxy") {
+          setTimeout(() => onNext(), 100);
+        } else {
+          setTimeout(onNext, 100);
+        }
+      },
+    });
+  } else if (step === "proxy_template") {
+    title = t("proxyTemplateStep");
+    body = e(SelectInput, {
+      items: PROXY_TEMPLATES.map((tmpl) => ({
+        label: tmpl.label,
+        value: tmpl.value,
+      })),
+      onSelect: (item) => {
+        const template = PROXY_TEMPLATES.find((t) => t.value === item.value);
+        if (template && template.data) {
+          set({ ...template.data });
+        }
         setTimeout(onNext, 100);
       },
     });
