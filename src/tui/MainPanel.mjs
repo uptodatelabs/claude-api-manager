@@ -32,6 +32,7 @@ export default function MainPanel({
   pathValue,
   onPathChange,
   onPathSubmit,
+  activeProfileName,
 }) {
   // 포커스 시 borderColor: cyan, 비포커스 시 gray
   const activeBorder = focus ? "cyan" : "gray";
@@ -227,12 +228,7 @@ export default function MainPanel({
         return e(ProfileDetail, {
           profile,
           borderColor: activeBorder,
-          isActive:
-            profile &&
-            currentSettings &&
-            currentSettings.env &&
-            profile.env &&
-            JSON.stringify(profile.env) === JSON.stringify(currentSettings.env),
+          isActive: !!profile && profile.name === activeProfileName,
         });
 
       case "diff":

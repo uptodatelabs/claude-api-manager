@@ -599,6 +599,7 @@ export default function App() {
             renameTarget,
             renameValue,
             settingsContent,
+            activeProfileName: activeProfile,
             onRenameChange: (v) => setRenameValue(v),
             onRenameSubmit: () => {
               const newName = renameValue.trim();
