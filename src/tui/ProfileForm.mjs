@@ -144,7 +144,10 @@ export function FormStep({ step, formData, setFormData, onNext, onPrev, onCancel
       )
     : STEP_FIELDS[step] || []);
   const [fieldIdx, setFieldIdx] = useState(0);
-  const field = fields[fieldIdx];
+  // 스텝 전환 시 렌더가 useEffect보다 먼저 실행되므로 fieldIdx가
+  // 새 스텝의 필드 수를 초과할 수 있음 → 안전하게 클램프
+  const safeFieldIdx = fields.length > 0 ? Math.min(fieldIdx, fields.length - 1) : 0;
+  const field = fields[safeFieldIdx];
 
   // 스텝이 바뀌면 필드 인덱스 리셋
   useEffect(() => {
