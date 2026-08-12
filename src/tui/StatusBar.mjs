@@ -64,5 +64,9 @@ export default function StatusBar({ activeProfile, view, mode, message, lang, pr
     );
   }
 
-  return e(Box, { paddingX: 1 }, e(Text, { wrap: "truncate-end" }, ...children));
+  return e(
+    Box,
+    { borderStyle: "single", borderColor: "cyan", paddingX: 1 },
+    e(Text, { wrap: "truncate-end" }, ...children)
+  );
 }

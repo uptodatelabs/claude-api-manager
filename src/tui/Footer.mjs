@@ -8,7 +8,7 @@ const e = React.createElement;
 
 export default function Footer({ hints }) {
   const { t } = useI18n();
-  // 핵심 키만 짧게 표시 (단일 라인, 테두리 없음)
+  // 핵심 키만 짧게 표시 (단일 Text + truncate-end로 어떤 너비에서도 한 줄)
   const defaultHints = [
     { key: "Tab", label: t("focus") },
     { key: "↑↓", label: t("move") },
@@ -33,5 +33,17 @@ export default function Footer({ hints }) {
     )
   );
 
-  return e(Box, { paddingX: 1 }, e(Text, { wrap: "truncate-end" }, ...children));
+  return e(
+    Box,
+    {
+      borderStyle: "single",
+      borderColor: "gray",
+      borderTop: true,
+      borderBottom: false,
+      borderLeft: false,
+      borderRight: false,
+      paddingX: 1,
+    },
+    e(Text, { wrap: "truncate-end" }, ...children)
+  );
 }
