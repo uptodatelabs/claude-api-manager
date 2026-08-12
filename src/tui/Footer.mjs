@@ -38,7 +38,7 @@ export default function Footer({ hints }) {
       Text,
       { key: i },
       e(Text, { backgroundColor: "gray", color: "white" }, ` ${h.key} `),
-      e(Text, { color: colors.muted }, ` ${h.label}`)
+      e(Text, { color: colors.muted }, ` ${h.label}   `)
     )
   );
 
