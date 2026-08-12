@@ -235,7 +235,15 @@ export function FormStep({ step, formData, setFormData, onNext, onPrev, onCancel
         value: p.value,
       })),
       onSelect: (item) => {
-        set({ provider: item.value });
+        const patch = { provider: item.value };
+        // 프록시 선택 시 기본 태그에 'proxy' 추가
+        if (item.value === "proxy") {
+          const existing = (formData.tags || "").split(",").map((s) => s.trim()).filter(Boolean);
+          if (!existing.includes("proxy")) {
+            patch.tags = existing.length > 0 ? existing.join(",") + ",proxy" : "proxy";
+          }
+        }
+        set(patch);
         // 프록시 선택 시 템플릿 선택 단계로 이동
         if (item.value === "proxy") {
           setTimeout(() => onNext(), 100);

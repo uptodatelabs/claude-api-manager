@@ -181,6 +181,16 @@ export default function App() {
         try {
           manager.applyProfile(prof.name);
           flash(t("successApplied", { name: prof.name }), "success");
+          // proxy 태그가 있는 프로필이면 프록시 자동 시작
+          if (prof.tags && prof.tags.includes("proxy")) {
+            if (!proxyRunning || proxyProfile !== prof.name) {
+              if (proxyRunning) {
+                stopProxy().then(() => startProxy(prof.name, proxyPort));
+              } else {
+                startProxy(prof.name, proxyPort);
+              }
+            }
+          }
           reload();
           setView("detail");
         } catch (err) {
