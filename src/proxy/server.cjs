@@ -9,6 +9,7 @@ const { StreamConverter } = require("./stream.cjs");
 /**
  * OpenAI 호환 API 프록시 서버
  * Claude Code → (Anthropic 형식) → 프록시 → (OpenAI 형식) → OpenAI 호환 API
+ * upstream이 이미 Anthropic 형식이면 자동 감지하여 passthrough
  */
 class ProxyServer {
   constructor(options = {}) {
@@ -21,6 +22,58 @@ class ProxyServer {
     this.server = null;
     this.running = false;
     this.settingsBackup = null;
+    this.upstreamFormat = null; // null | "anthropic" | "openai"
+  }
+
+  // upstream 형식 감지 (Anthropic Messages vs OpenAI Chat Completions)
+  detectUpstreamFormat() {
+    if (this.upstreamFormat) return Promise.resolve(this.upstreamFormat);
+    return new Promise((resolve) => {
+      const base = this.targetUrl.replace(/\/+$/, "");
+      const targetUrl = new URL("/v1/messages", base);
+      const targetModule = targetUrl.protocol === "https:" ? https : http;
+      const probeBody = JSON.stringify({
+        model: this.model || "claude-sonnet-4-5",
+        max_tokens: 1,
+        messages: [{ role: "user", content: "." }],
+      });
+      const options = {
+        hostname: targetUrl.hostname,
+        port: targetUrl.port || (targetUrl.protocol === "https:" ? 443 : 80),
+        path: targetUrl.pathname,
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": this.apiKey,
+          "anthropic-version": "2023-06-01",
+        },
+        timeout: 10000,
+      };
+      const req = targetModule.request(options, (res) => {
+        let data = "";
+        res.on("data", (c) => (data += c));
+        res.on("end", () => {
+          try {
+            const parsed = JSON.parse(data);
+            // Anthropic 형식: type=message + id=msg_ 또는 content 배열
+            if (parsed.type === "message" || parsed.id?.startsWith("msg_") || Array.isArray(parsed.content)) {
+              this.upstreamFormat = "anthropic";
+            } else {
+              this.upstreamFormat = "openai";
+            }
+          } catch {
+            this.upstreamFormat = "openai";
+          }
+          resolve(this.upstreamFormat);
+        });
+      });
+      req.on("error", () => {
+        this.upstreamFormat = "openai";
+        resolve(this.upstreamFormat);
+      });
+      req.write(probeBody);
+      req.end();
+    });
   }
 
   start() {
@@ -152,6 +205,15 @@ class ProxyServer {
   }
 
   async handleMessages(body, req, res) {
+    // upstream 형식 감지 (최초 1회)
+    const format = await this.detectUpstreamFormat();
+
+    // Anthropic 형식 upstream → passthrough (변환 없이 전달)
+    if (format === "anthropic") {
+      await this.passthrough(body, req, res);
+      return;
+    }
+
     // Anthropic → OpenAI 변환
     const openaiRequest = anthropicToOpenAI(body);
     if (this.model) {
@@ -182,6 +244,50 @@ class ProxyServer {
     } else {
       await this.handleSync(options, openaiRequest, body.model, res);
     }
+  }
+
+  // Anthropic 형식 upstream으로 원본 요청 전달 (스트리밍 포함)
+  passthrough(body, req, res) {
+    return new Promise((resolve) => {
+      const targetUrl = new URL("/v1/messages", this.targetUrl);
+      const targetModule = targetUrl.protocol === "https:" ? https : http;
+      const options = {
+        hostname: targetUrl.hostname,
+        port: targetUrl.port || (targetUrl.protocol === "https:" ? 443 : 80),
+        path: targetUrl.pathname,
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": this.apiKey,
+          "anthropic-version": "2023-06-01",
+          "anthropic-beta": req.headers["anthropic-beta"] || "",
+        },
+        timeout: 300000,
+      };
+
+      const proxyReq = targetModule.request(options, (proxyRes) => {
+        res.writeHead(proxyRes.statusCode, {
+          "Content-Type": proxyRes.headers["content-type"] || "application/json",
+          "Cache-Control": "no-cache",
+        });
+        proxyRes.pipe(res);
+        proxyRes.on("end", () => resolve());
+      });
+
+      proxyReq.on("error", (err) => {
+        res.writeHead(502);
+        res.end(
+          JSON.stringify({
+            type: "error",
+            error: { type: "api_error", message: `Upstream connection error: ${err.message}` },
+          })
+        );
+        resolve();
+      });
+
+      proxyReq.write(JSON.stringify(body));
+      proxyReq.end();
+    });
   }
 
   handleSync(options, openaiRequest, model, res) {
