@@ -85,11 +85,12 @@ export default function App() {
 
       await server.start();
       proxyRef.current = server;
+      const actualPort = server.port;
       setProxyProfile(profileName);
-      setProxyPort(port);
+      setProxyPort(actualPort);
       setProxyRunning(true);
       setProxyError(null);
-      flash(t("proxyStarted", { port, target: baseUrl }), "success");
+      flash(t("proxyStarted", { port: actualPort, target: baseUrl }), "success");
     } catch (err) {
       setProxyError(err.message);
     }
