@@ -8,18 +8,27 @@ const e = React.createElement;
 
 export default function Footer({ hints }) {
   const { t } = useI18n();
-  // 핵심 키만 짧게 표시 (단일 Text + truncate-end로 어떤 너비에서도 한 줄)
+  // 전체 명령어 표시 (모든 키 안내)
   const defaultHints = [
-    { key: "Tab", label: t("focus") },
     { key: "↑↓", label: t("move") },
+    { key: "j/k", label: t("scroll") },
+    { key: "PgUp/Dn", label: t("page") },
+    { key: "g/G", label: t("topBottom") },
     { key: "/", label: t("search") },
-    { key: "↵", label: t("apply") },
+    { key: "↵/a", label: t("apply") },
     { key: "e", label: t("edit") },
+    { key: "r", label: t("rename") },
     { key: "d", label: t("delete") },
     { key: "n", label: t("add") },
+    { key: "c", label: t("capture") },
+    { key: "i", label: t("import") },
+    { key: "x", label: t("export") },
     { key: "p", label: t("proxy") },
+    { key: "f", label: t("proxyFilter") },
     { key: "s", label: t("settings") },
+    { key: "Tab", label: t("focus") },
     { key: "l", label: t("lang") },
+    { key: "Esc", label: t("back") },
     { key: "q", label: t("quit") },
   ];
   const items = hints || defaultHints;
@@ -44,6 +53,6 @@ export default function Footer({ hints }) {
       borderRight: false,
       paddingX: 1,
     },
-    e(Text, { wrap: "truncate-end" }, ...children)
+    e(Text, { wrap: "wrap" }, ...children)
   );
 }
