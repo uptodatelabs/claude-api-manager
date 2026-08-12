@@ -20,6 +20,7 @@ export const translations = {
     add: "Add",
     settings: "Settings",
     proxy: "Proxy",
+    proxyFilter: "Proxy filter",
     quit: "Quit",
     // proxy
     proxyStarted: "✓ Proxy started on port {port} → {target}",
@@ -119,6 +120,7 @@ export const translations = {
     add: "추가",
     settings: "설정보기",
     proxy: "프록시",
+    proxyFilter: "프록시 필터",
     quit: "종료",
     // proxy
     proxyStarted: "✓ 프록시 시작됨: 포트 {port} → {target}",

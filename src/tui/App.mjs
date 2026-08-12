@@ -44,6 +44,7 @@ export default function App() {
   const [proxyRunning, setProxyRunning] = useState(false);
   const [proxyError, setProxyError] = useState(null);
   const proxyRef = useRef(null);
+  const [proxyFilter, setProxyFilter] = useState(false);
   const [lang, setLang] = useState("en");
 
   // i18n: t(key, params)
@@ -117,6 +118,12 @@ export default function App() {
             (p.tags && p.tags.some((t) => t.toLowerCase().includes(searchValue.toLowerCase())))
         )
       : profiles;
+
+  // 프록시 필터 적용
+  const filteredProfiles = proxyFilter
+    ? filtered.filter((p) => p.env && p.env.ANTHROPIC_BASE_URL)
+    : filtered;
+
   stateRef.current = {
     profiles,
     selectedIndex,
@@ -126,7 +133,7 @@ export default function App() {
     focus,
     pendingDelete,
     renameTarget,
-    filtered,
+    filtered: filteredProfiles,
   };
 
   const reload = () => {
@@ -329,6 +336,11 @@ export default function App() {
       setView("detail");
       return;
     }
+    if (input === "f") {
+      setProxyFilter(!proxyFilter);
+      setSelectedIndex(0);
+      return;
+    }
     if (key.return && selectedProfile) {
       setView("diff");
       setScrollOffset(0);
@@ -528,12 +540,13 @@ export default function App() {
         proxyRunning,
         proxyProfile,
         proxyPort,
+        proxyFilter,
       }),
       e(
         Box,
         { flexGrow: 1, flexDirection: "row" },
         e(Sidebar, {
-          profiles,
+          profiles: filteredProfiles,
           activeProfile,
           selectedIndex,
           searchMode,
