@@ -28,6 +28,14 @@ class ProxyServer {
     this.running = false;
     this.settingsBackup = null;
     this.upstreamFormat = null; // null | "anthropic" | "openai"
+    this.usage = { inputTokens: 0, outputTokens: 0, requests: 0 };
+  }
+
+  // 토큰 사용량 누적 (Anthropic 기준 input/output)
+  addUsage(inputTokens, outputTokens) {
+    if (Number.isFinite(inputTokens)) this.usage.inputTokens += inputTokens;
+    if (Number.isFinite(outputTokens)) this.usage.outputTokens += outputTokens;
+    this.usage.requests += 1;
   }
 
   // upstream 형식 감지 (Anthropic Messages vs OpenAI Chat Completions)
@@ -361,8 +369,56 @@ class ProxyServer {
           "Content-Type": proxyRes.headers["content-type"] || "application/json",
           "Cache-Control": "no-cache",
         });
-        proxyRes.pipe(res);
-        proxyRes.on("end", () => resolve());
+
+        const contentType = proxyRes.headers["content-type"] || "";
+        const isStream = contentType.includes("text/event-stream");
+        let buffer = "";
+        let inputTokens = 0;
+        let outputTokens = 0;
+        const jsonChunks = [];
+
+        proxyRes.on("data", (chunk) => {
+          if (isStream) {
+            res.write(chunk);
+            // SSE 이벤트에서 usage 추출 (message_start / message_delta)
+            buffer += chunk.toString();
+            const events = buffer.split("\n\n");
+            buffer = events.pop();
+            for (const evt of events) {
+              for (const line of evt.split("\n")) {
+                if (!line.startsWith("data: ")) continue;
+                try {
+                  const parsed = JSON.parse(line.slice(6));
+                  const u = parsed.message && parsed.message.usage
+                    ? parsed.message.usage
+                    : parsed.usage;
+                  if (!u) continue;
+                  if (Number.isFinite(u.input_tokens)) inputTokens = u.input_tokens;
+                  if (Number.isFinite(u.output_tokens)) outputTokens = u.output_tokens;
+                } catch {}
+              }
+            }
+          } else {
+            jsonChunks.push(chunk);
+            res.write(chunk);
+          }
+        });
+
+        proxyRes.on("end", () => {
+          if (!isStream) {
+            try {
+              const parsed = JSON.parse(Buffer.concat(jsonChunks).toString());
+              const u = parsed.usage || (parsed.message && parsed.message.usage);
+              if (u) {
+                inputTokens = u.input_tokens || 0;
+                outputTokens = u.output_tokens || 0;
+              }
+            } catch {}
+          }
+          this.addUsage(inputTokens, outputTokens);
+          res.end();
+          resolve();
+        });
       });
 
       proxyReq.on("error", (err) => {
@@ -393,6 +449,13 @@ class ProxyServer {
             const openaiResponse = JSON.parse(raw);
             const anthropicResponse = openAIToAnthropic(openaiResponse);
             anthropicResponse.model = model || anthropicResponse.model;
+            // 사용량 누적 (OpenAI: prompt_tokens/completion_tokens)
+            if (openaiResponse.usage) {
+              this.addUsage(
+                openaiResponse.usage.prompt_tokens,
+                openaiResponse.usage.completion_tokens
+              );
+            }
             res.writeHead(proxyRes.statusCode);
             res.end(JSON.stringify(anthropicResponse));
             resolve();
@@ -436,6 +499,12 @@ class ProxyServer {
       const requestId = `msg_${Date.now()}`;
       const converter = new StreamConverter(res, requestId, model || "");
       converter.inputTokens = 0;
+      let usageAdded = false;
+      const addStreamUsage = () => {
+        if (usageAdded) return;
+        usageAdded = true;
+        this.addUsage(converter.inputTokens, converter.outputTokens);
+      };
 
       const targetModule = options.port === 443 ? https : http;
       const proxyReq = targetModule.request(options, (proxyRes) => {
@@ -454,6 +523,7 @@ class ProxyServer {
               if (!converter.started) {
                 converter.ensureStarted();
               }
+              addStreamUsage();
               converter.finish("stop");
               continue;
             }
@@ -473,6 +543,7 @@ class ProxyServer {
           // 남은 버퍼 처리
           if (buffer.trim()) {
             if (buffer.trim() === "data: [DONE]") {
+              addStreamUsage();
               converter.finish("stop");
             } else if (buffer.trim().startsWith("data: ")) {
               try {
@@ -481,6 +552,7 @@ class ProxyServer {
               } catch {}
             }
           }
+          addStreamUsage();
           if (!converter.started) {
             converter.ensureStarted();
           }

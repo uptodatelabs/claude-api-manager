@@ -139,6 +139,15 @@ class StreamConverter {
    * OpenAI 스트리밍 청크 하나 처리
    */
   handleChunk(chunk) {
+    // 스트림 종료 청크의 usage (OpenAI는 마지막 청크에 usage 포함)
+    if (chunk.usage) {
+      if (Number.isFinite(chunk.usage.prompt_tokens)) {
+        this.inputTokens = chunk.usage.prompt_tokens;
+      }
+      if (Number.isFinite(chunk.usage.completion_tokens)) {
+        this.outputTokens = chunk.usage.completion_tokens;
+      }
+    }
     // tool_calls 인덱스 추적 (OpenAI의 index 기반)
     if (chunk.choices && chunk.choices[0]) {
       const delta = chunk.choices[0].delta || {};

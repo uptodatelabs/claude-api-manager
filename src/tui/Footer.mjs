@@ -33,18 +33,25 @@ export default function Footer({ hints }) {
   ];
   const items = hints || defaultHints;
 
-  const children = items.map((h, i) =>
-    e(
-      Text,
-      { key: i },
-      e(Text, { backgroundColor: "gray", color: "white" }, ` ${h.key} `),
-      e(Text, { color: colors.muted }, ` ${h.label}   `)
-    )
-  );
+  // 힌트를 2줄로 고정 분배 (폭과 무관하게 항상 2줄 유지)
+  const half = Math.ceil(items.length / 2);
+  const row1 = items.slice(0, half);
+  const row2 = items.slice(half);
+
+  const renderRow = (row, keyPrefix) =>
+    row.map((h, i) =>
+      e(
+        Text,
+        { key: keyPrefix + i },
+        e(Text, { backgroundColor: "gray", color: "white" }, ` ${h.key} `),
+        e(Text, { color: colors.muted }, ` ${h.label}   `)
+      )
+    );
 
   return e(
     Box,
     {
+      flexDirection: "column",
       borderStyle: "single",
       borderColor: "gray",
       borderTop: true,
@@ -52,7 +59,9 @@ export default function Footer({ hints }) {
       borderLeft: false,
       borderRight: false,
       paddingX: 1,
+      flexShrink: 0,
     },
-    e(Text, { wrap: "wrap" }, ...children)
+    e(Text, { wrap: "truncate-end" }, ...renderRow(row1, "a")),
+    e(Text, { wrap: "truncate-end" }, ...renderRow(row2, "b"))
   );
 }

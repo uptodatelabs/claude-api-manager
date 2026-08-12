@@ -18,7 +18,7 @@ export default function ScrollBox({ children, scroll = 0, heightOffset = 0 }) {
     return () => process.stdout.off("resize", onResize);
   }, []);
 
-  const availableHeight = Math.max(5, rows - heightOffset);
+  const availableHeight = Math.max(1, rows - heightOffset);
 
   return e(
     Box,
@@ -26,7 +26,7 @@ export default function ScrollBox({ children, scroll = 0, heightOffset = 0 }) {
       flexDirection: "column",
       height: availableHeight,
       overflowY: "hidden",
-      flexGrow: 1,
+      flexGrow: 0,
     },
     e(
       Box,

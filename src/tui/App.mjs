@@ -49,6 +49,7 @@ export default function App() {
   const [proxyRunning, setProxyRunning] = useState(false);
   const [proxyError, setProxyError] = useState(null);
   const proxyRef = useRef(null);
+  const [proxyUsage, setProxyUsage] = useState(null);
   const [proxyFilter, setProxyFilter] = useState(false);
   const [lang, setLang] = useState("en");
 
@@ -93,6 +94,7 @@ export default function App() {
       const actualPort = server.port;
       setProxyProfile(profileName);
       setProxyPort(actualPort);
+      setProxyUsage({ inputTokens: 0, outputTokens: 0, requests: 0 });
       setProxyRunning(true);
       setProxyError(null);
       flash(t("proxyStarted", { port: actualPort, target: baseUrl }), "success");
@@ -109,6 +111,7 @@ export default function App() {
     setProxyProfile(null);
     setProxyRunning(false);
     setProxyError(null);
+    setProxyUsage(null);
     flash(t("proxyStopped"), "success");
   };
 
@@ -167,6 +170,16 @@ export default function App() {
       flash(t("proxyRestored"), "info");
     }
     reload();
+  }, []);
+
+  // 프록시 토큰 사용량 주기 갱신 (1초)
+  useEffect(() => {
+    const timer = setInterval(() => {
+      if (proxyRef.current && proxyRef.current.running) {
+        setProxyUsage({ ...proxyRef.current.usage });
+      }
+    }, 1000);
+    return () => clearInterval(timer);
   }, []);
 
   const flash = (text, type = "info") => {
@@ -654,10 +667,11 @@ export default function App() {
         proxyProfile,
         proxyPort,
         proxyFilter,
+        proxyUsage,
       }),
       e(
         Box,
-        { flexGrow: 1, flexDirection: "row" },
+        { flexGrow: 1, flexDirection: "row", overflow: "hidden" },
         e(Sidebar, {
           profiles: filteredProfiles,
           activeProfile,
@@ -668,6 +682,7 @@ export default function App() {
           isFocused: focus === "sidebar",
           proxyRunning,
           proxyProfile,
+          heightOffset: 7,
           onSearchChange: (v) => {
             setSearchValue(v);
             setSelectedIndex(0);

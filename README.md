@@ -142,7 +142,7 @@ Connect OpenAI-compatible APIs (Ollama, LiteLLM, Groq, etc.) to Claude Code thro
 **From TUI:**
 1. Select a profile with `ANTHROPIC_BASE_URL` pointing to an OpenAI-compatible API
 2. Press `p` to start the proxy
-3. Status bar shows `⚡ profile:port`
+3. Status bar shows `* profile:port` and live token usage (`in X / out Y / req N`)
 4. Press `p` again to stop (settings.json is automatically restored)
 
 **From CLI:**
@@ -378,7 +378,7 @@ cam                # 인자 없이 실행 → TUI 진입
 **TUI에서:**
 1. `ANTHROPIC_BASE_URL`이 OpenAI 호환 API를 가리키는 프로필을 선택
 2. `p` 키로 프록시 시작
-3. 상태바에 `⚡ profile:port` 표시
+3. 상태바에 `* profile:port`와 실시간 토큰 사용량(`in X / out Y / req N`) 표시
 4. 다시 `p` 키로 프록시 중지 (settings.json 자동 복구)
 
 **CLI에서:**

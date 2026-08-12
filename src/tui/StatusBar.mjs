@@ -3,15 +3,42 @@ import React from "react";
 import { Box, Text } from "ink";
 import { colors } from "./theme.mjs";
 import { useI18n } from "./i18n.mjs";
+import { createRequire } from "module";
+const require = createRequire(import.meta.url);
+const pkg = require("../../package.json");
 
 const e = React.createElement;
 
-export default function StatusBar({ activeProfile, view, mode, message, lang, proxyRunning, proxyProfile, proxyPort, proxyFilter }) {
+// 토큰 수를 읽기 좋게 포맷 (12345 → 12.3k)
+function formatTokens(n) {
+  if (!Number.isFinite(n) || n < 0) return "0";
+  if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + "M";
+  if (n >= 1_000) return (n / 1_000).toFixed(1) + "k";
+  return String(n);
+}
+
+export default function StatusBar({ activeProfile, view, mode, message, lang, proxyRunning, proxyProfile, proxyPort, proxyFilter, proxyUsage }) {
   const { t } = useI18n();
 
-  const children = [
+  // 1번째 줄: 앱 정보 + 언어
+  const line1 = [
     e(Text, { color: colors.brand, bold: true }, "✦ Claude API Manager"),
+    e(Text, { color: colors.muted }, " v" + pkg.version),
     e(Text, { color: colors.muted }, " │ "),
+    e(Text, { color: colors.muted }, "uptodatelabs"),
+    e(Text, { color: colors.muted }, " │ "),
+    e(Text, { color: colors.warning }, lang === "en" ? "EN" : "KO"),
+  ];
+
+  if (mode) {
+    line1.push(
+      e(Text, { color: colors.muted }, " │ "),
+      e(Text, { color: colors.warning }, mode)
+    );
+  }
+
+  // 2번째 줄: 프로필/프록시 상태 + 토큰 사용량
+  const line2 = [
     activeProfile
       ? e(
           Text,
@@ -27,50 +54,53 @@ export default function StatusBar({ activeProfile, view, mode, message, lang, pr
       e(Text, { color: colors.muted }, `${t("view")}: `),
       e(Text, { color: colors.primary }, view)
     ),
-    e(Text, { color: colors.muted }, " │ "),
-    e(Text, { color: colors.warning }, lang === "en" ? "EN" : "KO"),
   ];
 
   if (proxyRunning) {
-    children.push(
+    line2.push(
       e(Text, { color: colors.muted }, " │ "),
       e(Text, { color: colors.success }, `* ${proxyProfile}:${proxyPort}`)
     );
+    if (proxyUsage) {
+      line2.push(
+        e(Text, { color: colors.muted }, " │ "),
+        e(Text, { color: colors.info }, `${t("usage")} `),
+        e(Text, { color: colors.info }, `in ${formatTokens(proxyUsage.inputTokens)}`),
+        e(Text, { color: colors.muted }, " / "),
+        e(Text, { color: colors.info }, `out ${formatTokens(proxyUsage.outputTokens)}`),
+        e(Text, { color: colors.muted }, " / "),
+        e(Text, { color: colors.info }, `req ${proxyUsage.requests}`)
+      );
+    }
   }
 
   if (proxyFilter) {
-    children.push(
+    line2.push(
       e(Text, { color: colors.muted }, " │ "),
       e(Text, { color: colors.warning }, "Proxy")
     );
   }
 
-  if (mode) {
-    children.push(
-      e(Text, { color: colors.muted }, " │ "),
-      e(Text, { color: colors.warning }, mode)
-    );
-  }
-
   if (message) {
+    if (line2.length > 0) line2.push(e(Text, { color: colors.muted }, " │ "));
     const msgColor = message.type === "success"
       ? colors.success
       : message.type === "danger"
       ? colors.danger
       : colors.info;
-    children.push(
-      e(Text, { color: colors.muted }, " │ "),
-      e(Text, { color: msgColor }, message.text)
-    );
+    line2.push(e(Text, { color: msgColor }, message.text));
   }
 
   return e(
     Box,
     {
+      flexDirection: "column",
       borderStyle: "single",
       borderColor: "cyan",
       paddingX: 1,
+      flexShrink: 0,
     },
-    e(Text, { wrap: "truncate-end" }, ...children)
+    e(Text, { wrap: "truncate-end" }, ...line1),
+    e(Text, { wrap: "truncate-end" }, ...line2)
   );
 }

@@ -11,10 +11,11 @@ import { useI18n } from "./i18n.mjs";
 import { createRequire } from "module";
 const require = createRequire(import.meta.url);
 const manager = require("../manager.cjs");
+const pkg = require("../../package.json");
 
 const e = React.createElement;
 
-const HEIGHT_OFFSET = 6; // StatusBar(3) + Footer(3)
+const HEIGHT_OFFSET = 7; // StatusBar(4) + Footer(3)
 
 export default function MainPanel({
   view,
@@ -369,10 +370,16 @@ export default function MainPanel({
           },
           e(
             Box,
-            { marginBottom: 2 },
+            { marginBottom: 1 },
             e(Text, { color: colors.cyan }, "✦"),
             e(Text, null, " "),
             e(Text, { color: colors.cyan, bold: true }, "Claude API Manager")
+          ),
+          e(
+            Box,
+            { marginBottom: 2 },
+            e(Text, { color: colors.muted }, "v" + pkg.version + "  "),
+            e(Text, { color: colors.muted }, "uptodatelabs")
           ),
           e(
             Box,
@@ -391,14 +398,14 @@ export default function MainPanel({
   if (view === "empty" || view === "form") {
     return e(
       Box,
-      { flexGrow: 1, flexDirection: "column", paddingX: 1 },
+      { flexGrow: 1, flexDirection: "column", paddingX: 1, overflow: "hidden" },
       mainContent
     );
   }
 
   return e(
     Box,
-    { flexGrow: 1, flexDirection: "column", paddingX: 1 },
+    { flexGrow: 1, flexDirection: "column", paddingX: 1, overflow: "hidden" },
     e(ScrollBox, { scroll, heightOffset: HEIGHT_OFFSET }, mainContent)
   );
 }

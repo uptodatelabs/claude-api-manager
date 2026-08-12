@@ -88,7 +88,7 @@ export default function Sidebar({
   onSearchExit,
   width,
   scroll = 0,
-  heightOffset = 6,
+  heightOffset = 7,
   isFocused = true,
   proxyRunning,
   proxyProfile,
