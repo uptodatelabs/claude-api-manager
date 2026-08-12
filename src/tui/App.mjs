@@ -472,9 +472,14 @@ export default function App() {
           formData.description && formData.description.trim() !== "-"
             ? formData.description.trim()
             : null;
-        const tags = formData.tags
-          ? formData.tags.split(",").map((s) => s.trim()).filter(Boolean)
-          : null;
+        // tags: '-' 입력 시 전체 삭제, 비어있으면 삭제
+        let tags = null;
+        if (formData.tags && formData.tags.trim() && formData.tags.trim() !== "-") {
+          tags = formData.tags
+            .split(",")
+            .map((s) => s.trim())
+            .filter(Boolean);
+        }
 
         if (isEdit) {
           manager.updateProfile(

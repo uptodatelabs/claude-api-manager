@@ -116,16 +116,21 @@ function updateProfile(name, envVars, model, fallbackModel, description = null, 
   if (!data.profiles[name]) {
     throw new Error(`Profile "${name}" not found`);
   }
-  const existing = data.profiles[name];
   data.profiles[name] = { env: envVars };
   if (model) data.profiles[name].model = model;
   if (fallbackModel) data.profiles[name].fallbackModel = fallbackModel;
-  // description/tags가 명시적으로 null로 전달되면 기존 값 유지
-  if (description !== null) data.profiles[name].description = description;
-  else if (existing.description) data.profiles[name].description = existing.description;
-  if (tags !== null && tags.length > 0) data.profiles[name].tags = tags;
-  else if (existing.tags && existing.tags.length > 0)
-    data.profiles[name].tags = existing.tags;
+  // description: 값이 있으면 설정, 없으면(null/빈 문자열) 삭제
+  if (description && description.trim()) {
+    data.profiles[name].description = description.trim();
+  } else {
+    delete data.profiles[name].description;
+  }
+  // tags: 값이 있으면 설정, 없으면(null/빈 배열) 삭제
+  if (tags && tags.length > 0) {
+    data.profiles[name].tags = tags;
+  } else {
+    delete data.profiles[name].tags;
+  }
   writeData(data);
   return data.profiles[name];
 }

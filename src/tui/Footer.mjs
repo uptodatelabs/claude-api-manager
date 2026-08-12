@@ -17,18 +17,16 @@ function Key({ label, keyName }) {
 
 export default function Footer({ hints }) {
   const { t } = useI18n();
+  // 핵심 키만 짧게 표시 (한 줄 유지)
   const defaultHints = [
     { key: "Tab", label: t("focus") },
     { key: "↑↓", label: t("move") },
     { key: "/", label: t("search") },
-    { key: "↵", label: t("select") },
-    { key: "a", label: t("apply") },
+    { key: "↵", label: t("apply") },
     { key: "e", label: t("edit") },
-    { key: "r", label: t("rename") },
     { key: "d", label: t("delete") },
     { key: "n", label: t("add") },
     { key: "p", label: t("proxy") },
-    { key: "f", label: t("proxyFilter") },
     { key: "s", label: t("settings") },
     { key: "l", label: t("lang") },
     { key: "q", label: t("quit") },
