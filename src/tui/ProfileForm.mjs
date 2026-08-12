@@ -135,7 +135,10 @@ export function FormStep({ step, formData, setFormData, onNext, onPrev, onCancel
   const [customKeyValue, setCustomKeyValue] = useState("");
 
   // 현재 스텝의 필드 (순차 입력)
-  const fields = STEP_FIELDS[step] || [];
+  // proxy 공급자: meta 스텝에서 ANTHROPIC_MODEL 제외 (proxy_keys에서 이미 입력)
+  const fields = (step === "meta" && formData.provider === "proxy"
+    ? STEP_FIELDS.meta.filter((f) => f.name !== "ANTHROPIC_MODEL")
+    : STEP_FIELDS[step] || []);
   const [fieldIdx, setFieldIdx] = useState(0);
   const field = fields[fieldIdx];
 
