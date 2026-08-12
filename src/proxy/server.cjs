@@ -299,7 +299,23 @@ class ProxyServer {
     });
   }
 
+  // Claude Code 자동 승인 분류기 요청 감지:
+  // auto 모드에서 안전성 판단용으로 claude-sonnet-*[1m] 같은 모델을 호출하는데,
+  // upstream이 이 모델을 모르면 실패하므로 프로필 모델로 치환
+  isClassifierRequest(model) {
+    if (!model || !this.model) return false;
+    const m = String(model).toLowerCase();
+    // 프로필 모델과 다르고 sonnet/haiku 계열이면 분류기 요청으로 간주
+    if (m === String(this.model).toLowerCase()) return false;
+    return m.includes("sonnet") || m.includes("haiku");
+  }
+
   async handleMessages(body, req, res) {
+    // 분류기 요청이면 프로필 모델로 치환 (passthrough 경로에서 적용)
+    if (this.isClassifierRequest(body.model)) {
+      body.model = this.model;
+    }
+
     // upstream 형식 감지 (최초 1회)
     const format = await this.detectUpstreamFormat();
 
