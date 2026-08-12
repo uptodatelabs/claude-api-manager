@@ -37,6 +37,7 @@ Claude API Manager is a TUI (terminal UI) dashboard that manages the API configu
 - **Profile metadata** — description, tags, last-applied time, apply count (auto-tracked)
 - **Safety** — `.bak` backup before every `settings.json` write; corrupted data file auto-recovery
 - **CLI compatibility** — All operations also available as one-line commands
+- **OpenAI-compatible proxy** — Connect OpenAI-compatible APIs to Claude Code through a local proxy server
 
 ### Quick Start
 
@@ -95,8 +96,8 @@ cam                # Launch TUI (no arguments)
 | `r` | Rename profile |
 | `d` | Delete profile (confirmation dialog) |
 | `n` | Add new profile (wizard) |
+| `p` | Start/stop proxy for selected profile |
 | `s` | View Claude Code settings file |
-| `p` | Change settings.json path (inside settings view) |
 | `l` | Toggle language (English ↔ 한국어) |
 | `q` / `Ctrl+C` | Quit |
 
@@ -133,6 +134,35 @@ In edit mode, enter `-` in a field to delete its value.
 - **Delete confirm** — `d` shows a dialog: `[y]` delete, `[n]`/`Esc` cancel
 - **Settings viewer** — `s` shows current settings (path, env, model). Sensitive keys masked as `sk-c...8738`. `p` to change the path
 
+#### OpenAI-compatible proxy
+
+Connect OpenAI-compatible APIs (Ollama, LiteLLM, Groq, etc.) to Claude Code through a local proxy server.
+
+**From TUI:**
+1. Select a profile with `ANTHROPIC_BASE_URL` pointing to an OpenAI-compatible API
+2. Press `p` to start the proxy
+3. Status bar shows `⚡ profile:port`
+4. Press `p` again to stop
+
+**From CLI:**
+
+```bash
+cam proxy <profile-name>              # Start proxy on default port 3456
+cam proxy <profile-name> --port 5678  # Custom port
+```
+
+Then in another terminal:
+
+```bash
+ANTHROPIC_BASE_URL=http://127.0.0.1:3456 claude
+```
+
+The proxy converts:
+- Anthropic Messages format → OpenAI Chat Completions format
+- `x-api-key` → `Authorization: Bearer`
+- Streaming SSE events (bidirectional)
+- Tool calls/results (Anthropic ↔ OpenAI)
+
 ### CLI Commands
 
 All features also work as one-line commands:
@@ -158,6 +188,10 @@ cam config                     # Show profile data file path
 cam export backup.json
 cam import backup.json
 cam import -f backup.json      # Overwrite existing profiles
+
+# Proxy
+cam proxy <profile-name>              # Start proxy (default port 3456)
+cam proxy <profile-name> --port 5678  # Custom port
 ```
 
 ### Providers
@@ -230,6 +264,7 @@ Claude API Manager는 Claude Code의 `settings.json`에 있는 API 설정을 관
 - **프로필 메타데이터** — 설명, 태그, 마지막 적용 시각, 적용 횟수(자동 기록)
 - **안전장치** — `settings.json` 쓰기 전 `.bak` 백업; 데이터 파일 손상 시 자동 복구
 - **CLI 호환** — 모든 작업을 한 줄 명령어로도 수행 가능
+- **OpenAI 호환 프록시** — 로컬 프록시 서버를 통해 OpenAI 호환 API를 Claude Code에 연결
 
 ### 빠른 시작
 
@@ -288,8 +323,8 @@ cam                # 인자 없이 실행 → TUI 진입
 | `r` | 프로필 이름 변경 |
 | `d` | 프로필 삭제 (확인 다이얼로그) |
 | `n` | 새 프로필 추가 (위저드) |
+| `p` | 선택 프로필 프록시 시작/중지 |
 | `s` | Claude Code 설정 파일 보기 |
-| `p` | settings.json 경로 변경 (설정 보기 내) |
 | `l` | 언어 전환 (English ↔ 한국어) |
 | `q` / `Ctrl+C` | 종료 |
 
@@ -326,6 +361,35 @@ cam                # 인자 없이 실행 → TUI 진입
 - **삭제 확인** — `d` 누르면 다이얼로그: `[y]` 삭제, `[n]`/`Esc` 취소
 - **설정 파일 보기** — `s` 키로 현재 설정(경로, env, model) 표시. 민감 키는 `sk-c...8738` 형식으로 마스킹. `p` 키로 경로 변경
 
+#### OpenAI 호환 프록시
+
+로컬 프록시 서버를 통해 OpenAI 호환 API(Ollama, LiteLLM, Groq 등)를 Claude Code에 연결합니다.
+
+**TUI에서:**
+1. `ANTHROPIC_BASE_URL`이 OpenAI 호환 API를 가리키는 프로필을 선택
+2. `p` 키로 프록시 시작
+3. 상태바에 `⚡ profile:port` 표시
+4. 다시 `p` 키로 프록시 중지
+
+**CLI에서:**
+
+```bash
+cam proxy <프로필-이름>              # 기본 포트 3456으로 프록시 시작
+cam proxy <프로필-이름> --port 5678  # 커스텀 포트
+```
+
+다른 터미널에서:
+
+```bash
+ANTHROPIC_BASE_URL=http://127.0.0.1:3456 claude
+```
+
+프록시가 변환하는 내용:
+- Anthropic Messages 형식 → OpenAI Chat Completions 형식
+- `x-api-key` → `Authorization: Bearer`
+- 양방향 SSE 스트리밍 이벤트
+- 도구 호출/결과 (Anthropic ↔ OpenAI)
+
 ### CLI 명령
 
 모든 기능은 한 줄 명령어로도 사용 가능합니다:
@@ -351,6 +415,10 @@ cam config                     # 프로필 데이터 파일 경로
 cam export backup.json
 cam import backup.json
 cam import -f backup.json      # 기존 프로필 덮어쓰기
+
+# 프록시
+cam proxy <프로필-이름>              # 프록시 시작 (기본 포트 3456)
+cam proxy <프로필-이름> --port 5678  # 커스텀 포트
 ```
 
 ### 지원 공급자
