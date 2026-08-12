@@ -119,14 +119,9 @@ export default function App() {
         )
       : profiles;
 
-  // 프록시 필터 적용 (Anthropic API 직접 연결이 아닌 프록시 프로필만)
+  // 프록시 필터 적용 (proxy 태그가 있는 프로필만)
   const filteredProfiles = proxyFilter
-    ? filtered.filter(
-        (p) =>
-          p.env &&
-          p.env.ANTHROPIC_BASE_URL &&
-          !p.env.ANTHROPIC_BASE_URL.includes("api.anthropic.com")
-      )
+    ? filtered.filter((p) => p.tags && p.tags.includes("proxy"))
     : filtered;
 
   stateRef.current = {
