@@ -79,6 +79,7 @@ export default function App() {
         apiKey,
         model,
         profileName,
+        manager,
       });
 
       await server.start();

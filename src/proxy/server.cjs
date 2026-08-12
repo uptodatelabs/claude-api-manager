@@ -17,12 +17,19 @@ class ProxyServer {
     this.apiKey = options.apiKey || "";
     this.model = options.model || "";
     this.profileName = options.profileName || "";
+    this.manager = options.manager || null;
     this.server = null;
     this.running = false;
+    this.settingsBackup = null;
   }
 
   start() {
     return new Promise((resolve, reject) => {
+      // settings.json 자동 설정
+      if (this.manager) {
+        this.applyProxySettings();
+      }
+
       this.server = http.createServer((req, res) => this.handleRequest(req, res));
       this.server.listen(this.port, () => {
         this.running = true;
@@ -37,12 +44,51 @@ class ProxyServer {
       if (this.server) {
         this.server.close(() => {
           this.running = false;
+          // settings.json 원상복구
+          if (this.manager && this.settingsBackup) {
+            this.restoreSettings();
+          }
           resolve();
         });
       } else {
         resolve();
       }
     });
+  }
+
+  applyProxySettings() {
+    const current = this.manager.readSettings() || {};
+    // 현재 env 백업
+    this.settingsBackup = {
+      env: current.env ? { ...current.env } : {},
+      model: current.model || null,
+    };
+
+    // 프록시 설정 적용
+    const newEnv = { ...(current.env || {}) };
+    newEnv.ANTHROPIC_BASE_URL = `http://127.0.0.1:${this.port}`;
+
+    // 타겟 API 키는 프록시가 사용하므로 settings.json에는 프록시 인증 키 설정
+    // (ANTHROPIC_BASE_URL만 설정하면 Claude Code가 프록시로 요청을 보냄)
+
+    current.env = newEnv;
+    this.manager.writeSettings(current);
+  }
+
+  restoreSettings() {
+    const current = this.manager.readSettings() || {};
+    if (this.settingsBackup.env) {
+      current.env = this.settingsBackup.env;
+    } else {
+      delete current.env;
+    }
+    if (this.settingsBackup.model) {
+      current.model = this.settingsBackup.model;
+    } else {
+      delete current.model;
+    }
+    this.manager.writeSettings(current);
+    this.settingsBackup = null;
   }
 
   async handleRequest(req, res) {

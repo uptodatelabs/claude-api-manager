@@ -260,6 +260,7 @@ program
         apiKey,
         model,
         profileName: name,
+        manager,
       });
 
       await server.start();
