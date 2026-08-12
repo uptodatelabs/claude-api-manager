@@ -135,8 +135,8 @@ export default function Sidebar({
     );
   }
 
-  // 1. manualScroll 기준 초기 위치 (j/k로 수동 스크롤)
-  let actualScroll = Math.max(0, Math.min(manualScroll, Math.max(0, enriched.length - 1)));
+  // 1. scroll 기준 초기 위치 (j/k로 수동 스크롤)
+  let actualScroll = Math.max(0, Math.min(scroll, Math.max(0, enriched.length - 1)));
 
   // 2. selectedIndex가 보이도록 follow (순수 파생, 렌더마다 항상 일관)
   const vis1 = calcVisibleCount(actualScroll);
