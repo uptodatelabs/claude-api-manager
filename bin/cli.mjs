@@ -8,6 +8,7 @@ import chalk from "chalk";
 
 const require = createRequire(import.meta.url);
 const manager = require("../src/manager.cjs");
+const { ProxyServer } = require("../src/proxy/server.cjs");
 const App = (await import("../src/tui/App.mjs")).default;
 
 function mask(value) {
@@ -224,6 +225,66 @@ program
     try {
       manager.removeProfile(name);
       console.log(chalk.green(`"${name}" 삭제됨`));
+    } catch (err) {
+      console.log(chalk.red(`오류: ${err.message}`));
+    }
+  });
+
+program
+  .command("proxy <name>")
+  .description("OpenAI 호환 API 프록시 서버 시작")
+  .option("-p, --port <port>", "프록시 서버 포트", "3456")
+  .option("-m, --model <model>", "OpenAI API 모델 오버라이드")
+  .action(async (name, opts) => {
+    try {
+      const profile = manager.getProfile(name);
+      if (!profile) {
+        console.log(chalk.red(`프로필 "${name}"을(를) 찾을 수 없습니다.`));
+        return;
+      }
+
+      const env = profile.env || {};
+      const baseUrl = env.ANTHROPIC_BASE_URL || env.OPENAI_BASE_URL || "";
+      const apiKey = env.ANTHROPIC_API_KEY || env.ANTHROPIC_AUTH_TOKEN || env.OPENAI_API_KEY || "";
+      const model = opts.model || env.ANTHROPIC_MODEL || "";
+
+      if (!baseUrl) {
+        console.log(chalk.red(`프로필 "${name}"에 ANTHROPIC_BASE_URL 또는 OPENAI_BASE_URL이 설정되어 있지 않습니다.`));
+        return;
+      }
+
+      const port = parseInt(opts.port, 10);
+      const server = new ProxyServer({
+        port,
+        targetUrl: baseUrl,
+        apiKey,
+        model,
+        profileName: name,
+      });
+
+      await server.start();
+
+      console.log(chalk.green(`\n✓ 프록시 시작됨`));
+      console.log(chalk.dim(`  프로필: ${name}`));
+      console.log(chalk.dim(`  프록시: http://127.0.0.1:${port}`));
+      console.log(chalk.dim(`  타겟:  ${baseUrl}`));
+      console.log(chalk.dim(`  모델:  ${model || "(프로필 기본값)"}`));
+      console.log();
+      console.log(chalk.bold("Claude Code에서 사용:"));
+      console.log(chalk.cyan(`  ANTHROPIC_BASE_URL=http://127.0.0.1:${port} claude`));
+      console.log();
+      console.log(chalk.dim("Ctrl+C로 중지"));
+
+      // SIGINT 처리
+      process.on("SIGINT", async () => {
+        console.log(chalk.dim("\n프록시 중지 중..."));
+        await server.stop();
+        console.log(chalk.green("프록시 중지됨"));
+        process.exit(0);
+      });
+
+      // 프로세스 유지
+      await new Promise(() => {});
     } catch (err) {
       console.log(chalk.red(`오류: ${err.message}`));
     }
