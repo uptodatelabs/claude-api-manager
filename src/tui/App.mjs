@@ -134,6 +134,7 @@ export default function App() {
     pendingDelete,
     renameTarget,
     filtered: filteredProfiles,
+    activeProfileName: activeProfile,
   };
 
   const reload = () => {
@@ -150,6 +151,10 @@ export default function App() {
   };
 
   useEffect(() => {
+    // 이전 실행에서 프록시가 급작 종료되어 남은 설정 백업이 있으면 복원
+    if (ProxyServer.restoreFromDisk(manager)) {
+      flash(t("proxyRestored"), "info");
+    }
     reload();
   }, []);
 
@@ -259,9 +264,13 @@ export default function App() {
       return;
     }
 
-    // 종료
+    // 종료 (프록시 정리 후 종료)
     if (input === "q" || (key.ctrl && input === "c")) {
-      exit();
+      if (proxyRef.current) {
+        stopProxy().then(() => exit());
+      } else {
+        exit();
+      }
       return;
     }
 
@@ -405,14 +414,15 @@ export default function App() {
       setLang(lang === "en" ? "ko" : "en");
       return;
     }
-    if (input === "p" && selectedProfile) {
-      if (proxyRunning && proxyProfile === selectedProfile.name) {
+    // p: 활성 프로필 기준으로 프록시 실행/중지
+    if (input === "p" && s.activeProfileName) {
+      if (proxyRunning && proxyProfile === s.activeProfileName) {
         stopProxy();
       } else if (!proxyRunning) {
-        startProxy(selectedProfile.name, proxyPort);
+        startProxy(s.activeProfileName, proxyPort);
       } else {
         // 다른 프로필로 프록시 재시작
-        stopProxy().then(() => startProxy(selectedProfile.name, proxyPort));
+        stopProxy().then(() => startProxy(s.activeProfileName, proxyPort));
       }
       return;
     }

@@ -32,6 +32,7 @@ export const translations = {
     // proxy
     proxyStarted: "✓ Proxy started on port {port} → {target}",
     proxyStopped: "✓ Proxy stopped",
+    proxyRestored: "✓ Previous proxy config restored",
     profileNotFound: 'Profile "{name}" not found',
     proxyNoBaseUrl: "Profile has no ANTHROPIC_BASE_URL configured",
     // sidebar
@@ -148,6 +149,7 @@ export const translations = {
     // proxy
     proxyStarted: "✓ 프록시 시작됨: 포트 {port} → {target}",
     proxyStopped: "✓ 프록시 중지됨",
+    proxyRestored: "✓ 이전 프록시 설정 복원됨",
     profileNotFound: '프로필 "{name}"을(를) 찾을 수 없습니다',
     proxyNoBaseUrl: "프로필에 ANTHROPIC_BASE_URL이 설정되어 있지 않습니다",
     searchPlaceholder: "검색 (이름/태그/설명)",

@@ -2,9 +2,14 @@
 
 const http = require("http");
 const https = require("https");
+const fs = require("fs");
+const path = require("path");
+const os = require("os");
 const { URL } = require("url");
 const { anthropicToOpenAI, openAIToAnthropic } = require("./convert.cjs");
 const { StreamConverter } = require("./stream.cjs");
+
+const BACKUP_FILE = path.join(os.homedir(), ".claude-api-manager", "proxy-settings-backup.json");
 
 /**
  * OpenAI 호환 API 프록시 서버
@@ -113,11 +118,15 @@ class ProxyServer {
 
   applyProxySettings() {
     const current = this.manager.readSettings() || {};
-    // 현재 env 백업
+    // 현재 env 백업 (메모리 + 디스크)
     this.settingsBackup = {
       env: current.env ? { ...current.env } : {},
       model: current.model || null,
     };
+    try {
+      fs.mkdirSync(path.dirname(BACKUP_FILE), { recursive: true });
+      fs.writeFileSync(BACKUP_FILE, JSON.stringify(this.settingsBackup), "utf-8");
+    } catch {}
 
     // 프록시 설정 적용
     const newEnv = { ...(current.env || {}) };
@@ -149,6 +158,33 @@ class ProxyServer {
     }
     this.manager.writeSettings(current);
     this.settingsBackup = null;
+    try {
+      fs.unlinkSync(BACKUP_FILE);
+    } catch {}
+  }
+
+  // 프로세스 급작 종료 등으로 남은 백업을 감지해 settings.json 복원
+  static restoreFromDisk(manager) {
+    if (!fs.existsSync(BACKUP_FILE)) return false;
+    try {
+      const backup = JSON.parse(fs.readFileSync(BACKUP_FILE, "utf-8"));
+      const current = manager.readSettings() || {};
+      if (backup.env) {
+        current.env = backup.env;
+      } else {
+        delete current.env;
+      }
+      if (backup.model) {
+        current.model = backup.model;
+      } else {
+        delete current.model;
+      }
+      manager.writeSettings(current);
+      fs.unlinkSync(BACKUP_FILE);
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   async handleRequest(req, res) {
