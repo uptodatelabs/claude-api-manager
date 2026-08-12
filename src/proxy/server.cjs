@@ -68,8 +68,11 @@ class ProxyServer {
     const newEnv = { ...(current.env || {}) };
     newEnv.ANTHROPIC_BASE_URL = `http://127.0.0.1:${this.port}`;
 
-    // 타겟 API 키는 프록시가 사용하므로 settings.json에는 프록시 인증 키 설정
-    // (ANTHROPIC_BASE_URL만 설정하면 Claude Code가 프록시로 요청을 보냄)
+    // Claude Code가 로그인 상태로 인식하도록 API 키/토큰 설정
+    // (프록시는 수신 인증을 무시하고 자체 키로 업스트림 호출)
+    if (this.apiKey) {
+      newEnv.ANTHROPIC_API_KEY = this.apiKey;
+    }
 
     current.env = newEnv;
     this.manager.writeSettings(current);
