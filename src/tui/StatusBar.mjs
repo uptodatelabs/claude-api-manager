@@ -66,7 +66,15 @@ export default function StatusBar({ activeProfile, view, mode, message, lang, pr
 
   return e(
     Box,
-    { borderStyle: "single", borderColor: "cyan", paddingX: 1 },
+    {
+      borderStyle: "single",
+      borderColor: "cyan",
+      paddingX: 1,
+      borderTop: true,
+      borderBottom: false,
+      borderLeft: true,
+      borderRight: true,
+    },
     e(Text, { wrap: "truncate-end" }, ...children)
   );
 }
