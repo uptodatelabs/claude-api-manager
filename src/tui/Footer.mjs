@@ -6,18 +6,9 @@ import { useI18n } from "./i18n.mjs";
 
 const e = React.createElement;
 
-function Key({ label, keyName }) {
-  return e(
-    Box,
-    { marginRight: 1 },
-    e(Text, { backgroundColor: "gray", color: "white" }, " " + keyName + " "),
-    e(Text, { color: colors.muted }, " " + label)
-  );
-}
-
 export default function Footer({ hints }) {
   const { t } = useI18n();
-  // 핵심 키만 짧게 표시 (한 줄 유지)
+  // 핵심 키만 짧게 표시 (단일 Text + truncate-end로 어떤 너비에서도 한 줄)
   const defaultHints = [
     { key: "Tab", label: t("focus") },
     { key: "↑↓", label: t("move") },
@@ -32,6 +23,16 @@ export default function Footer({ hints }) {
     { key: "q", label: t("quit") },
   ];
   const items = hints || defaultHints;
+
+  const children = items.map((h, i) =>
+    e(
+      Text,
+      { key: i },
+      e(Text, { backgroundColor: "gray", color: "white" }, ` ${h.keyName} `),
+      e(Text, { color: colors.muted }, ` ${h.label}`)
+    )
+  );
+
   return e(
     Box,
     {
@@ -43,6 +44,6 @@ export default function Footer({ hints }) {
       borderRight: false,
       paddingX: 1,
     },
-    ...items.map((h, i) => e(Key, { key: i, label: h.label, keyName: h.key }))
+    e(Text, { wrap: "truncate-end" }, ...children)
   );
 }
