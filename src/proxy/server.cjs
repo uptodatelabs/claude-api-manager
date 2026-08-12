@@ -68,10 +68,12 @@ class ProxyServer {
     const newEnv = { ...(current.env || {}) };
     newEnv.ANTHROPIC_BASE_URL = `http://127.0.0.1:${this.port}`;
 
-    // Claude Code가 로그인 상태로 인식하도록 API 키/토큰 설정
-    // (프록시는 수신 인증을 무시하고 자체 키로 업스트림 호출)
+    // Claude Code가 로그인 상태로 인식하도록 Bearer 토큰 설정
+    // (공식 문서: 게이트웨이 크레덴셜은 ANTHROPIC_AUTH_TOKEN 사용 권장,
+    //  즉시 우선 적용되며 일회성 승인 불필요. API_KEY는 대화형 승인 필요)
     if (this.apiKey) {
-      newEnv.ANTHROPIC_API_KEY = this.apiKey;
+      newEnv.ANTHROPIC_AUTH_TOKEN = this.apiKey;
+      delete newEnv.ANTHROPIC_API_KEY;
     }
 
     current.env = newEnv;
