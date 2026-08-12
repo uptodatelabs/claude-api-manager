@@ -14,7 +14,7 @@ const manager = require("../manager.cjs");
 
 const e = React.createElement;
 
-const HEIGHT_OFFSET = 5; // StatusBar(3) + Footer(2)
+const HEIGHT_OFFSET = 6; // StatusBar(3) + Footer(3)
 
 export default function MainPanel({
   view,
