@@ -129,9 +129,28 @@ class ProxyServer {
 
   applyProxySettings() {
     const current = this.manager.readSettings() || {};
+    // 복원 기준 = 활성 프로필 env (직접 연결 설정). 없으면 현재 settings.env.
+    // 현재 settings가 이미 프록시 주소(127.0.0.1)면 의미없는 백업이 되므로 배제
+    let originalEnv = null;
+    try {
+      const activeName = this.manager.getActiveProfileName();
+      if (activeName) {
+        const p = this.manager.getProfile(activeName);
+        if (p && p.env && Object.keys(p.env).length > 0) {
+          originalEnv = { ...p.env };
+        }
+      }
+    } catch {}
+    if (
+      !originalEnv &&
+      current.env &&
+      !String(current.env.ANTHROPIC_BASE_URL || "").startsWith("http://127.0.0.1")
+    ) {
+      originalEnv = { ...current.env };
+    }
     // 현재 env 백업 (메모리 + 디스크)
     this.settingsBackup = {
-      env: current.env ? { ...current.env } : {},
+      env: originalEnv || {},
       model: current.model || null,
     };
     try {
@@ -180,8 +199,20 @@ class ProxyServer {
     try {
       const backup = JSON.parse(fs.readFileSync(BACKUP_FILE, "utf-8"));
       const current = manager.readSettings() || {};
-      if (backup.env) {
-        current.env = backup.env;
+      // 백업이 없거나 프록시 주소면 활성 프로필 env로 복원
+      let env = backup.env;
+      const baseUrl = env && env.ANTHROPIC_BASE_URL ? String(env.ANTHROPIC_BASE_URL) : "";
+      if (!env || baseUrl.startsWith("http://127.0.0.1")) {
+        try {
+          const activeName = manager.getActiveProfileName();
+          if (activeName) {
+            const p = manager.getProfile(activeName);
+            if (p && p.env && Object.keys(p.env).length > 0) env = { ...p.env };
+          }
+        } catch {}
+      }
+      if (env && Object.keys(env).length > 0) {
+        current.env = env;
       } else {
         delete current.env;
       }
@@ -209,6 +240,13 @@ class ProxyServer {
       return;
     }
 
+    // Claude Code 연결 확인용 (HEAD /api/hello)
+    if (req.method === "HEAD" && req.url === "/api/hello") {
+      res.writeHead(200, { "Content-Type": "text/plain" });
+      res.end();
+      return;
+    }
+
     // 모델 목록
     if (req.method === "GET" && req.url === "/v1/models") {
       res.writeHead(200);
@@ -220,8 +258,8 @@ class ProxyServer {
       return;
     }
 
-    // Anthropic Messages 엔드포인트
-    if (req.method === "POST" && req.url === "/v1/messages") {
+    // Anthropic Messages 엔드포인트 (쿼리스트링 포함: /v1/messages?beta=true)
+    if (req.method === "POST" && req.url.split("?")[0] === "/v1/messages") {
       try {
         const body = await this.readBody(req);
         await this.handleMessages(body, req, res);

@@ -97,7 +97,7 @@ cam                # Launch TUI (no arguments)
 | `d` | Delete profile (confirmation dialog) |
 | `n` | Add new profile (wizard) |
 | `p` | Start/stop proxy for selected profile |
-| `s` | View Claude Code settings file |
+| `s` | View Claude Code settings file (`e` to edit env vars) |
 | `l` | Toggle language (English ↔ 한국어) |
 | `q` / `Ctrl+C` | Quit |
 
@@ -133,6 +133,7 @@ In edit mode, enter `-` in a field to delete its value.
 
 - **Delete confirm** — `d` shows a dialog: `[y]` delete, `[n]`/`Esc` cancel
 - **Settings viewer** — `s` shows current settings (path, env, model). Sensitive keys masked as `sk-c...8738`. `p` to change the path
+- **Settings editor** — from the settings viewer, press `e` to edit the `env` block: `↑`/`↓` to select a key, `Enter` to edit its value, `a` to add a new key, `d` to delete. Values are saved to `settings.json` immediately (a `.bak` backup is kept)
 
 #### OpenAI-compatible proxy
 
@@ -152,10 +153,12 @@ cam proxy <profile-name> --port 5678  # Custom port
 ```
 
 The proxy automatically:
-1. **Backs up** your current `settings.json`
+1. **Backs up** your current `settings.json` (the active profile's env)
 2. **Sets** `ANTHROPIC_BASE_URL=http://127.0.0.1:<port>` in `settings.json`
 3. **Starts** the proxy server
 4. **Restores** the original `settings.json` when stopped
+
+If the proxy process is killed (crash, forced quit), the leftover backup is detected and `settings.json` is restored automatically on the next `cam` invocation.
 
 Then in another terminal:
 
@@ -330,7 +333,7 @@ cam                # 인자 없이 실행 → TUI 진입
 | `d` | 프로필 삭제 (확인 다이얼로그) |
 | `n` | 새 프로필 추가 (위저드) |
 | `p` | 선택 프로필 프록시 시작/중지 |
-| `s` | Claude Code 설정 파일 보기 |
+| `s` | Claude Code 설정 파일 보기 (`e` 키로 env 편집) |
 | `l` | 언어 전환 (English ↔ 한국어) |
 | `q` / `Ctrl+C` | 종료 |
 
@@ -366,6 +369,7 @@ cam                # 인자 없이 실행 → TUI 진입
 
 - **삭제 확인** — `d` 누르면 다이얼로그: `[y]` 삭제, `[n]`/`Esc` 취소
 - **설정 파일 보기** — `s` 키로 현재 설정(경로, env, model) 표시. 민감 키는 `sk-c...8738` 형식으로 마스킹. `p` 키로 경로 변경
+- **설정 편집** — 설정 보기에서 `e` 키로 env 블록 편집: `↑`/`↓`로 키 선택, `Enter`로 값 수정, `a`로 새 키 추가, `d`로 삭제. 값은 `settings.json`에 즉시 저장됨 (`.bak` 백업 유지)
 
 #### OpenAI 호환 프록시
 
@@ -385,10 +389,12 @@ cam proxy <프로필-이름> --port 5678  # 커스텀 포트
 ```
 
 프록시가 자동으로 수행하는 작업:
-1. 현재 `settings.json` **백업**
+1. 현재 `settings.json` **백업** (활성 프로필 env 기준)
 2. `ANTHROPIC_BASE_URL=http://127.0.0.1:<port>` **설정**
 3. 프록시 서버 **시작**
 4. 중지 시 원본 `settings.json` **복구**
+
+프록시가 크래시/강제 종료로 죽으면 남은 백업을 감지해, 다음 `cam` 실행 시 `settings.json`을 자동으로 복원합니다.
 
 다른 터미널에서:
 

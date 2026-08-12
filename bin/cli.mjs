@@ -43,7 +43,7 @@ const program = new Command();
 program
   .name("cam")
   .description("Claude API Manager - settings.json의 API 설정을 관리하는 TUI")
-  .version("2.0.0");
+  .version("2.1.0");
 
 program
   .command("list")
@@ -292,6 +292,8 @@ program
   });
 
 if (process.argv.length === 2) {
+  // TUI 시작 전: 이전 실행에서 프록시가 급작 종료되어 남은 설정 백업이 있으면 복원
+  ProxyServer.restoreFromDisk(manager);
   const app = React.createElement(App);
   const { waitUntilExit } = render(app);
   try {
@@ -301,5 +303,7 @@ if (process.argv.length === 2) {
     process.exit(1);
   }
 } else {
+  // CLI 명령 전에도 동일하게 복원 (proxy 명령 포함)
+  ProxyServer.restoreFromDisk(manager);
   program.parse();
 }

@@ -39,6 +39,11 @@ export default function App() {
   const [renameValue, setRenameValue] = useState("");
   const [settingsContent, setSettingsContent] = useState(null);
   const [pathValue, setPathValue] = useState("");
+  const [settingsEditIndex, setSettingsEditIndex] = useState(0);
+  const [settingsEditKey, setSettingsEditKey] = useState("");
+  const [settingsEditValue, setSettingsEditValue] = useState("");
+  const [settingsEditMode, setSettingsEditMode] = useState(null); // null | "edit" | "add"
+  const [settingsEditStep, setSettingsEditStep] = useState("value"); // "key" | "value"
   const [proxyProfile, setProxyProfile] = useState(null);
   const [proxyPort, setProxyPort] = useState(3456);
   const [proxyRunning, setProxyRunning] = useState(false);
@@ -136,6 +141,11 @@ export default function App() {
     renameTarget,
     filtered: filteredProfiles,
     activeProfileName: activeProfile,
+    settingsEditIndex,
+    settingsEditKey,
+    settingsEditValue,
+    settingsEditMode,
+    settingsEditStep,
   };
 
   const reload = () => {
@@ -243,6 +253,78 @@ export default function App() {
       } else if (input === "p") {
         setPathValue(manager.getSettingsPath());
         setView("path-prompt");
+      } else if (input === "e") {
+        setSettingsEditIndex(0);
+        setSettingsEditKey("");
+        setSettingsEditValue("");
+        setSettingsEditMode(null);
+        setSettingsEditStep("value");
+        setView("settings-edit");
+      }
+      return;
+    }
+
+    // 설정 env 편집 (키 선택)
+    if (s.view === "settings-edit") {
+      const env = (settingsContent && settingsContent.env) || {};
+      const keys = Object.keys(env);
+      const cur = Number.isFinite(s.settingsEditIndex) ? s.settingsEditIndex : 0;
+      if (key.escape) {
+        setView("settings-view");
+        return;
+      }
+      if (key.downArrow || input === "j") {
+        setSettingsEditIndex(Math.min(keys.length - 1, cur + 1));
+        return;
+      }
+      if (key.upArrow || input === "k") {
+        setSettingsEditIndex(Math.max(0, cur - 1));
+        return;
+      }
+      if (input === "a") {
+        setSettingsEditKey("");
+        setSettingsEditValue("");
+        setSettingsEditMode("add");
+        setSettingsEditStep("key");
+        setView("settings-edit-value");
+        return;
+      }
+      if (key.return && keys.length > 0) {
+        const idx = Math.min(cur, keys.length - 1);
+        setSettingsEditKey(keys[idx]);
+        setSettingsEditValue(env[keys[idx]]);
+        setSettingsEditMode("edit");
+        setSettingsEditStep("value");
+        setView("settings-edit-value");
+        return;
+      }
+      if (input === "d" && keys.length > 0) {
+        try {
+          const settings = manager.readSettings() || {};
+          if (settings.env) {
+            const idx = Math.min(cur, keys.length - 1);
+            delete settings.env[keys[idx]];
+            manager.writeSettings(settings);
+            setSettingsContent(manager.readSettings());
+            setSettingsEditIndex(Math.max(0, idx - 1));
+            flash(t("successSaved"), "success");
+          }
+        } catch (err) {
+          flash(t("errorMsg", { msg: err.message }), "danger");
+        }
+        return;
+      }
+      return;
+    }
+
+    // 설정 env 값 수정/추가 프롬프트
+    if (s.view === "settings-edit-value") {
+      if (key.escape) {
+        setSettingsEditKey("");
+        setSettingsEditValue("");
+        setSettingsEditMode(null);
+        setSettingsEditStep("value");
+        setView("settings-edit");
       }
       return;
     }
@@ -611,6 +693,40 @@ export default function App() {
             renameValue,
             settingsContent,
             activeProfileName: activeProfile,
+            settingsEditIndex,
+            settingsEditKey,
+            settingsEditValue,
+            settingsEditMode,
+            settingsEditStep,
+            onSettingsEditKeyChange: (v) => setSettingsEditKey(v),
+            onSettingsEditValueChange: (v) => setSettingsEditValue(v),
+            onSettingsEditSubmit: () => {
+              // add 모드: 키 입력 후 Enter → 값 입력 단계로
+              if (settingsEditMode === "add" && settingsEditStep === "key") {
+                setSettingsEditStep("value");
+                return;
+              }
+              const key = settingsEditKey.trim();
+              if (!key) {
+                setView("settings-edit");
+                return;
+              }
+              try {
+                const settings = manager.readSettings() || {};
+                if (!settings.env) settings.env = {};
+                settings.env[key] = settingsEditValue;
+                manager.writeSettings(settings);
+                setSettingsContent(manager.readSettings());
+                flash(t("successSaved"), "success");
+              } catch (err) {
+                flash(t("errorMsg", { msg: err.message }), "danger");
+              }
+              setSettingsEditKey("");
+              setSettingsEditValue("");
+              setSettingsEditMode(null);
+              setSettingsEditStep("value");
+              setView("settings-edit");
+            },
             onRenameChange: (v) => setRenameValue(v),
             onRenameSubmit: () => {
               const newName = renameValue.trim();

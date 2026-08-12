@@ -33,6 +33,14 @@ export default function MainPanel({
   onPathChange,
   onPathSubmit,
   activeProfileName,
+  settingsEditIndex,
+  settingsEditKey,
+  settingsEditValue,
+  settingsEditMode,
+  settingsEditStep,
+  onSettingsEditKeyChange,
+  onSettingsEditValueChange,
+  onSettingsEditSubmit,
 }) {
   // 포커스 시 borderColor: cyan, 비포커스 시 gray
   const activeBorder = focus ? "cyan" : "gray";
@@ -184,7 +192,115 @@ export default function MainPanel({
         e(
           Box,
           { marginTop: 1 },
-          e(Text, { color: colors.muted }, t("close"))
+          e(Text, { color: colors.muted }, t("close")),
+          e(Text, { color: colors.warning }, "   [e] "),
+          e(Text, { color: colors.muted }, t("editEnv"))
+        )
+      );
+    }
+
+    // 설정 env 편집 (키 선택)
+    if (view === "settings-edit") {
+      const settings = settingsContent;
+      const env = (settings && settings.env) || {};
+      const keys = Object.keys(env);
+      const cur = Number.isFinite(settingsEditIndex) ? settingsEditIndex : 0;
+      return e(
+        Box,
+        {
+          flexDirection: "column",
+          borderStyle: "round",
+          borderColor: activeBorder,
+          paddingX: 2,
+          paddingY: 1,
+          flexGrow: 1,
+        },
+        e(
+          Box,
+          { marginBottom: 1 },
+          e(Text, { color: colors.primary, bold: true }, t("editEnvTitle"))
+        ),
+        keys.length === 0
+          ? e(Text, { color: colors.muted }, "  " + t("noEnv"))
+          : keys.map((k, i) =>
+              e(
+                Box,
+                { key: k },
+                e(
+                  Text,
+                  { color: i === cur ? colors.primary : colors.muted, bold: i === cur },
+                  (i === cur ? "▶ " : "  ") + k.padEnd(33, " ")
+                ),
+                e(Text, null, " = "),
+                /KEY|SECRET|TOKEN/.test(k)
+                  ? e(Text, { color: colors.muted }, mask(env[k]))
+                  : e(Text, { color: i === cur ? "cyan" : colors.primary }, env[k])
+              )
+            ),
+        e(
+          Box,
+          { marginTop: 1 },
+          e(Text, { color: colors.muted }, "↑↓ " + t("move")),
+          e(Text, { color: colors.primary }, " [Enter] "),
+          e(Text, { color: colors.muted }, t("edit")),
+          e(Text, { color: colors.primary }, " [a] "),
+          e(Text, { color: colors.muted }, t("add")),
+          e(Text, { color: colors.danger }, " [d] "),
+          e(Text, { color: colors.muted }, t("delete")),
+          e(Text, { color: colors.muted }, "  [esc] "),
+          e(Text, { color: colors.muted }, t("back"))
+        )
+      );
+    }
+
+    // 설정 env 값 수정/추가 프롬프트
+    if (view === "settings-edit-value") {
+      const isAdd = settingsEditMode === "add";
+      const keyFocused = isAdd && settingsEditStep === "key";
+      const valueFocused = !keyFocused;
+      return e(
+        Box,
+        {
+          flexDirection: "column",
+          borderStyle: "round",
+          borderColor: activeBorder,
+          paddingX: 2,
+          paddingY: 2,
+          flexGrow: 1,
+        },
+        e(
+          Box,
+          { marginBottom: 1 },
+          e(Text, { color: colors.primary, bold: true }, isAdd ? t("addEnvTitle") : t("editEnvTitle"))
+        ),
+        e(
+          Box,
+          { marginBottom: 1 },
+          e(Text, { color: keyFocused ? colors.primary : colors.muted, bold: keyFocused }, t("envKey") + " "),
+          e(TextInput, {
+            value: settingsEditKey,
+            onChange: onSettingsEditKeyChange,
+            onSubmit: onSettingsEditSubmit,
+            placeholder: "KEY",
+            focus: keyFocused,
+          })
+        ),
+        e(
+          Box,
+          { marginBottom: 1 },
+          e(Text, { color: valueFocused ? colors.primary : colors.muted, bold: valueFocused }, t("envValue") + " "),
+          e(TextInput, {
+            value: settingsEditValue,
+            onChange: onSettingsEditValueChange,
+            onSubmit: onSettingsEditSubmit,
+            placeholder: "value",
+            focus: valueFocused,
+          })
+        ),
+        e(
+          Box,
+          { marginTop: 1 },
+          e(Text, { color: colors.muted }, t("saveConfirm"))
         )
       );
     }
