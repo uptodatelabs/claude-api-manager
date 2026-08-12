@@ -70,10 +70,6 @@ export default function StatusBar({ activeProfile, view, mode, message, lang, pr
       borderStyle: "single",
       borderColor: "cyan",
       paddingX: 1,
-      borderTop: true,
-      borderBottom: false,
-      borderLeft: true,
-      borderRight: true,
     },
     e(Text, { wrap: "truncate-end" }, ...children)
   );
