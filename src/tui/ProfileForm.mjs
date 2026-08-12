@@ -135,9 +135,13 @@ export function FormStep({ step, formData, setFormData, onNext, onPrev, onCancel
   const [customKeyValue, setCustomKeyValue] = useState("");
 
   // 현재 스텝의 필드 (순차 입력)
-  // proxy 공급자: meta 스텝에서 ANTHROPIC_MODEL 제외 (proxy_keys에서 이미 입력)
+  // proxy 공급자: meta 스텝에서 모델 관련 필드 제외
+  // (ANTHROPIC_MODEL은 proxy_keys에서 입력, model/fallbackModel은
+  //  프록시가 모델을 오버라이드하므로 무의미)
   const fields = (step === "meta" && formData.provider === "proxy"
-    ? STEP_FIELDS.meta.filter((f) => f.name !== "ANTHROPIC_MODEL")
+    ? STEP_FIELDS.meta.filter(
+        (f) => !["ANTHROPIC_MODEL", "model", "fallbackModel"].includes(f.name)
+      )
     : STEP_FIELDS[step] || []);
   const [fieldIdx, setFieldIdx] = useState(0);
   const field = fields[fieldIdx];
