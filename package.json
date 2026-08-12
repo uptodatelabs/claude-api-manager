@@ -1,6 +1,6 @@
 {
   "name": "claude-api-manager",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "TUI dashboard for managing Claude Code API configurations. Save multiple API profiles and switch providers with a keystroke.",
   "main": "src/manager.cjs",
   "bin": {
