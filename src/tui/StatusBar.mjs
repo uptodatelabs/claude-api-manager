@@ -43,23 +43,15 @@ export default function StatusBar({ activeProfile, view, mode, message, lang, pr
 
   if (proxyFilter) {
     parts.push(
-      e(
-        Text,
-        null,
-        e(Text, { color: colors.muted }, "│ "),
-        e(Text, { color: colors.warning }, "⚡ Proxy filter")
-      )
+      e(Text, { color: colors.muted }, "│ "),
+      e(Text, { color: colors.warning }, "⚡ Proxy")
     );
   }
 
   if (mode) {
     parts.push(
-      e(
-        Text,
-        null,
-        e(Text, { color: colors.muted }, "│ "),
-        e(Text, { color: colors.warning }, mode)
-      )
+      e(Text, { color: colors.muted }, "│ "),
+      e(Text, { color: colors.warning }, mode)
     );
   }
 
@@ -70,12 +62,8 @@ export default function StatusBar({ activeProfile, view, mode, message, lang, pr
       ? colors.danger
       : colors.info;
     parts.push(
-      e(
-        Text,
-        null,
-        e(Text, { color: colors.muted }, "│ "),
-        e(Text, { color: msgColor }, message.text)
-      )
+      e(Text, { color: colors.muted }, "│ "),
+      e(Text, { color: msgColor }, message.text)
     );
   }
 
