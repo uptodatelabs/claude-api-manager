@@ -7,7 +7,7 @@ import { useI18n } from "./i18n.mjs";
 
 const e = React.createElement;
 
-function SidebarItem({ profile, isSelected, isFocused }) {
+function SidebarItem({ profile, isSelected, isFocused, proxyRunning, proxyProfile }) {
   const provider = detectProvider(profile.env);
   const indicator = isSelected ? "▶ " : "  ";
   const indicatorColor = isSelected
@@ -20,6 +20,13 @@ function SidebarItem({ profile, isSelected, isFocused }) {
   const tags =
     profile.tags && profile.tags.length > 0
       ? e(Text, { color: colors.yellow, wrap: "truncate-end" }, " [" + profile.tags.join(",") + "]")
+      : null;
+
+  // 프록시 상태 표시
+  const proxyStatus = proxyRunning && proxyProfile === profile.name
+    ? e(Text, { color: colors.success, wrap: "truncate-end" }, " ⚡")
+    : profile.env.ANTHROPIC_BASE_URL
+      ? e(Text, { color: colors.warning, wrap: "truncate-end" }, " ◌")
       : null;
 
   return e(
@@ -35,7 +42,8 @@ function SidebarItem({ profile, isSelected, isFocused }) {
         { color: nameColor, bold: isSelected && isFocused, wrap: "truncate-end" },
         profile.name
       ),
-      tags
+      tags,
+      proxyStatus
     ),
     e(
       Box,
@@ -79,9 +87,11 @@ export default function Sidebar({
   onSearchChange,
   onSearchExit,
   width,
-  manualScroll = 0,
+  scroll = 0,
   heightOffset = 5,
   isFocused = true,
+  proxyRunning,
+  proxyProfile,
 }) {
   const [rows, setRows] = useState(getTerminalRows());
   const { t } = useI18n();
@@ -200,6 +210,8 @@ export default function Sidebar({
           profile: p,
           isSelected: startIdx + i === selectedIndex,
           isFocused: isFocused,
+          proxyRunning: proxyRunning,
+          proxyProfile: proxyProfile,
         })
       )
     ),

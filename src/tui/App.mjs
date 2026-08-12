@@ -540,6 +540,8 @@ export default function App() {
           searchValue,
           manualScroll: sidebarManualScroll,
           isFocused: focus === "sidebar",
+          proxyRunning,
+          proxyProfile,
           onSearchChange: (v) => {
             setSearchValue(v);
             setSelectedIndex(0);
