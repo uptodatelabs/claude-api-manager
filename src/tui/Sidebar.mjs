@@ -24,9 +24,9 @@ function SidebarItem({ profile, isSelected, isFocused, proxyRunning, proxyProfil
 
   // 프록시 상태 표시
   const proxyStatus = proxyRunning && proxyProfile === profile.name
-    ? e(Text, { color: colors.success, wrap: "truncate-end" }, " ⚡")
+    ? e(Text, { color: colors.success, wrap: "truncate-end" }, " *")
     : profile.env.ANTHROPIC_BASE_URL
-      ? e(Text, { color: colors.warning, wrap: "truncate-end" }, " ◌")
+      ? e(Text, { color: colors.warning, wrap: "truncate-end" }, " o")
       : null;
 
   return e(

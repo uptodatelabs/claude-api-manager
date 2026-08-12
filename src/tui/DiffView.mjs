@@ -72,7 +72,7 @@ export default function DiffView({ profile, current, borderColor }) {
     e(
       Box,
       { marginBottom: 1 },
-      e(Text, { color: colors.warning, bold: true }, "⚡ Diff Preview"),
+      e(Text, { color: colors.warning, bold: true }, "* Diff Preview"),
       e(Text, { color: colors.muted }, t("diffSubtitle"))
     ),
 

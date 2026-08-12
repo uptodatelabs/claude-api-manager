@@ -34,14 +34,14 @@ export default function StatusBar({ activeProfile, view, mode, message, lang, pr
   if (proxyRunning) {
     children.push(
       e(Text, { color: colors.muted }, " │ "),
-      e(Text, { color: colors.success }, `⚡ ${proxyProfile}:${proxyPort}`)
+      e(Text, { color: colors.success }, `* ${proxyProfile}:${proxyPort}`)
     );
   }
 
   if (proxyFilter) {
     children.push(
       e(Text, { color: colors.muted }, " │ "),
-      e(Text, { color: colors.warning }, "⚡ Proxy")
+      e(Text, { color: colors.warning }, "Proxy")
     );
   }
 
