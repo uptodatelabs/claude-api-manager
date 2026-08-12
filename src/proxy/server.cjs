@@ -85,17 +85,28 @@ class ProxyServer {
 
   start() {
     return new Promise((resolve, reject) => {
-      // settings.json 자동 설정
-      if (this.manager) {
-        this.applyProxySettings();
-      }
-
-      this.server = http.createServer((req, res) => this.handleRequest(req, res));
-      this.server.listen(this.port, () => {
-        this.running = true;
-        resolve();
-      });
-      this.server.on("error", reject);
+      const tryListen = (port) => {
+        const srv = http.createServer((req, res) => this.handleRequest(req, res));
+        srv.on("error", (err) => {
+          if (err.code === "EADDRINUSE" && port < this.port + 20) {
+            // 포트 사용 중 → 다음 포트로 자동 이동
+            tryListen(port + 1);
+          } else {
+            reject(err);
+          }
+        });
+        srv.listen(port, () => {
+          this.server = srv;
+          this.port = port;
+          this.running = true;
+          // listen 성공 후에만 settings.json 반영 (실패 시 잔여 설정 방지)
+          if (this.manager) {
+            this.applyProxySettings();
+          }
+          resolve();
+        });
+      };
+      tryListen(this.port);
     });
   }
 
