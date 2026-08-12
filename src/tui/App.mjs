@@ -433,7 +433,12 @@ export default function App() {
   });
 
   const isEdit = !!editingProfile;
-  const formStepName = STEPS[formStepIdx];
+  const formStepName = (() => {
+    const steps = formData.provider === "proxy"
+      ? ["provider", "proxy_keys", "meta", "custom"]
+      : STEPS;
+    return steps[formStepIdx];
+  })();
 
   const goFormNext = () => {
     if (formStepIdx === STEPS.length - 1) {

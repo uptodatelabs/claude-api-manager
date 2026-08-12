@@ -14,6 +14,7 @@ export const PROVIDER_VALUES = [
   { value: "vertex" },
   { value: "foundry" },
   { value: "aws" },
+  { value: "proxy" },
 ];
 
 // 관리되는 표준 env 키 (custom으로 분류되지 않음)
@@ -54,6 +55,11 @@ const STEP_FIELDS = {
     { name: "ANTHROPIC_BASE_URL", labelKey: "ANTHROPIC_BASE_URL", placeholderKey: "baseUrlPlaceholder" },
     { name: "AWS_REGION", labelKey: "AWS_REGION", placeholderKey: "regionPlaceholder" },
   ],
+  proxy_keys: [
+    { name: "ANTHROPIC_BASE_URL", labelKey: "proxyApiUrl", placeholderKey: "proxyApiUrlPlaceholder" },
+    { name: "ANTHROPIC_API_KEY", labelKey: "proxyApiKey", placeholderKey: "proxyApiKeyPlaceholder" },
+    { name: "ANTHROPIC_MODEL", labelKey: "proxyModel", placeholderKey: "proxyModelPlaceholder" },
+  ],
   meta: [
     { name: "ANTHROPIC_MODEL", labelKey: "ANTHROPIC_MODEL", placeholderKey: "ANTHROPIC_MODEL" },
     { name: "model", labelKey: "modelLabel", placeholderKey: "modelLabel" },
@@ -69,6 +75,7 @@ const PROVIDER_LABELS = {
   vertex: "Google Cloud Agent Platform",
   foundry: "Microsoft Foundry",
   aws: "Claude Platform on AWS",
+  proxy: "OpenAI Compatible (Proxy)",
 };
 
 export function FormStep({ step, formData, setFormData, onNext, onPrev, onCancel, isEdit }) {
@@ -182,7 +189,36 @@ export function FormStep({ step, formData, setFormData, onNext, onPrev, onCancel
       e(
         Box,
         { marginBottom: 1 },
-        e(Text, { color: colors.primary }, field.labelKey),
+        e(Text, { color: colors.primary }, t(field.labelKey)),
+        formData[field.name] && isEdit
+          ? e(Text, { color: colors.danger }, t("deleteHint"))
+          : null
+      ),
+      e(TextInput, {
+        value: formData[field.name] || "",
+        onChange: (v) => set({ [field.name]: v }),
+        onSubmit: nextField,
+        placeholder: t(field.placeholderKey),
+      }),
+      e(
+        Box,
+        { marginTop: 1 },
+        e(
+          Text,
+          { color: colors.muted },
+          t("fieldIndicator", { cur: fieldIdx + 1, total: fields.length })
+        )
+      )
+    );
+  } else if (step === "proxy_keys") {
+    title = t("proxyKeysStep");
+    body = e(
+      Box,
+      { flexDirection: "column" },
+      e(
+        Box,
+        { marginBottom: 1 },
+        e(Text, { color: colors.primary }, t(field.labelKey)),
         formData[field.name] && isEdit
           ? e(Text, { color: colors.danger }, t("deleteHint"))
           : null
