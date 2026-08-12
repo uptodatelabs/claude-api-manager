@@ -6,7 +6,7 @@ import { useI18n } from "./i18n.mjs";
 
 const e = React.createElement;
 
-export default function StatusBar({ activeProfile, view, mode, message, lang }) {
+export default function StatusBar({ activeProfile, view, mode, message, lang, proxyRunning, proxyProfile, proxyPort }) {
   const { t } = useI18n();
   const parts = [
     e(Text, { color: colors.brand, bold: true }, "✦ Claude API Manager"),
@@ -29,6 +29,17 @@ export default function StatusBar({ activeProfile, view, mode, message, lang }) 
     e(Text, { color: colors.muted }, "│"),
     e(Text, { color: colors.warning }, lang === "en" ? "EN" : "KO"),
   ];
+
+  if (proxyRunning) {
+    parts.push(
+      e(
+        Text,
+        null,
+        e(Text, { color: colors.muted }, "│ "),
+        e(Text, { color: colors.success }, `⚡ ${proxyProfile}:${proxyPort}`)
+      )
+    );
+  }
 
   if (mode) {
     parts.push(

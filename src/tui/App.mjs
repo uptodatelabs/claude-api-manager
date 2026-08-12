@@ -4,6 +4,7 @@ import { Box, Text, useApp, useInput } from "ink";
 import { createRequire } from "module";
 const require = createRequire(import.meta.url);
 const manager = require("../manager.cjs");
+const { ProxyServer } = require("../proxy/server.cjs");
 
 import StatusBar from "./StatusBar.mjs";
 import Footer from "./Footer.mjs";
@@ -38,6 +39,11 @@ export default function App() {
   const [renameValue, setRenameValue] = useState("");
   const [settingsContent, setSettingsContent] = useState(null);
   const [pathValue, setPathValue] = useState("");
+  const [proxyProfile, setProxyProfile] = useState(null);
+  const [proxyPort, setProxyPort] = useState(3456);
+  const [proxyRunning, setProxyRunning] = useState(false);
+  const [proxyError, setProxyError] = useState(null);
+  const proxyRef = useRef(null);
   const [lang, setLang] = useState("en");
 
   // i18n: t(key, params)
@@ -46,6 +52,56 @@ export default function App() {
     lang,
     setLang,
     t,
+  };
+
+  // 프록시 서버 관리
+  const startProxy = async (profileName, port = 3456) => {
+    const profile = manager.getProfile(profileName);
+    if (!profile) {
+      setProxyError(t("profileNotFound", { name: profileName }));
+      return;
+    }
+
+    const env = profile.env || {};
+    const baseUrl = env.ANTHROPIC_BASE_URL || env.OPENAI_BASE_URL || "";
+    const apiKey = env.ANTHROPIC_API_KEY || env.ANTHROPIC_AUTH_TOKEN || env.OPENAI_API_KEY || "";
+    const model = env.ANTHROPIC_MODEL || "";
+
+    if (!baseUrl) {
+      setProxyError(t("proxyNoBaseUrl"));
+      return;
+    }
+
+    try {
+      const server = new ProxyServer({
+        port,
+        targetUrl: baseUrl,
+        apiKey,
+        model,
+        profileName,
+      });
+
+      await server.start();
+      proxyRef.current = server;
+      setProxyProfile(profileName);
+      setProxyPort(port);
+      setProxyRunning(true);
+      setProxyError(null);
+      flash(t("proxyStarted", { port, target: baseUrl }), "success");
+    } catch (err) {
+      setProxyError(err.message);
+    }
+  };
+
+  const stopProxy = async () => {
+    if (proxyRef.current) {
+      await proxyRef.current.stop();
+      proxyRef.current = null;
+    }
+    setProxyProfile(null);
+    setProxyRunning(false);
+    setProxyError(null);
+    flash(t("proxyStopped"), "success");
   };
 
   // useRef로 최신 상태를 항상 참조 (useInput 클로저 stale 문제 해결)
@@ -326,6 +382,17 @@ export default function App() {
       setLang(lang === "en" ? "ko" : "en");
       return;
     }
+    if (input === "p" && selectedProfile) {
+      if (proxyRunning && proxyProfile === selectedProfile.name) {
+        stopProxy();
+      } else if (!proxyRunning) {
+        startProxy(selectedProfile.name, proxyPort);
+      } else {
+        // 다른 프로필로 프록시 재시작
+        stopProxy().then(() => startProxy(selectedProfile.name, proxyPort));
+      }
+      return;
+    }
     if (input === "n") {
       setEditingProfile(null);
       setFormStepIdx(0);
@@ -457,6 +524,9 @@ export default function App() {
         lang,
         mode: searchMode ? t("searching") : null,
         message,
+        proxyRunning,
+        proxyProfile,
+        proxyPort,
       }),
       e(
         Box,

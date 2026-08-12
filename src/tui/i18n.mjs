@@ -19,7 +19,13 @@ export const translations = {
     delete: "Delete",
     add: "Add",
     settings: "Settings",
+    proxy: "Proxy",
     quit: "Quit",
+    // proxy
+    proxyStarted: "✓ Proxy started on port {port} → {target}",
+    proxyStopped: "✓ Proxy stopped",
+    profileNotFound: 'Profile "{name}" not found',
+    proxyNoBaseUrl: "Profile has no ANTHROPIC_BASE_URL configured",
     // sidebar
     searchPlaceholder: "Search (name/tag/desc)",
     searchOrType: " / Search or type name",
@@ -112,7 +118,13 @@ export const translations = {
     delete: "삭제",
     add: "추가",
     settings: "설정보기",
+    proxy: "프록시",
     quit: "종료",
+    // proxy
+    proxyStarted: "✓ 프록시 시작됨: 포트 {port} → {target}",
+    proxyStopped: "✓ 프록시 중지됨",
+    profileNotFound: '프로필 "{name}"을(를) 찾을 수 없습니다',
+    proxyNoBaseUrl: "프로필에 ANTHROPIC_BASE_URL이 설정되어 있지 않습니다",
     searchPlaceholder: "검색 (이름/태그/설명)",
     searchOrType: " / 검색 또는 이름 입력",
     noMatch: "일치하는 프로필 없음",

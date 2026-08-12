@@ -27,6 +27,7 @@ export default function Footer({ hints }) {
     { key: "r", label: t("rename") },
     { key: "d", label: t("delete") },
     { key: "n", label: t("add") },
+    { key: "p", label: t("proxy") },
     { key: "s", label: t("settings") },
     { key: "l", label: t("lang") },
     { key: "q", label: t("quit") },
