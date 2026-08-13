@@ -137,24 +137,25 @@ class ProxyServer {
 
   applyProxySettings() {
     const current = this.manager.readSettings() || {};
-    // 복원 기준 = 활성 프로필 env (직접 연결 설정). 없으면 현재 settings.env.
-    // 현재 settings가 이미 프록시 주소(127.0.0.1)면 의미없는 백업이 되므로 배제
+    // 복원 기준 = 현재 settings.env (사용자의 수동 수정 보존).
+    // 현재 settings가 이미 프록시 주소(127.0.0.1)면 이전 크래시 잔여물이므로
+    // 활성 프로필 env로 대체 (의미없는 백업 방지)
     let originalEnv = null;
-    try {
-      const activeName = this.manager.getActiveProfileName();
-      if (activeName) {
-        const p = this.manager.getProfile(activeName);
-        if (p && p.env && Object.keys(p.env).length > 0) {
-          originalEnv = { ...p.env };
-        }
-      }
-    } catch {}
     if (
-      !originalEnv &&
       current.env &&
       !String(current.env.ANTHROPIC_BASE_URL || "").startsWith("http://127.0.0.1")
     ) {
       originalEnv = { ...current.env };
+    } else {
+      try {
+        const activeName = this.manager.getActiveProfileName();
+        if (activeName) {
+          const p = this.manager.getProfile(activeName);
+          if (p && p.env && Object.keys(p.env).length > 0) {
+            originalEnv = { ...p.env };
+          }
+        }
+      } catch {}
     }
     // 현재 env 백업 (메모리 + 디스크)
     this.settingsBackup = {
