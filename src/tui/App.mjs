@@ -50,6 +50,9 @@ export default function App() {
   const [proxyError, setProxyError] = useState(null);
   const proxyRef = useRef(null);
   const [proxyUsage, setProxyUsage] = useState(null);
+  const [proxyDebug, setProxyDebug] = useState(false);
+  const [proxyDebugLogs, setProxyDebugLogs] = useState([]);
+  const [debugScroll, setDebugScroll] = useState(0);
   const [proxyFilter, setProxyFilter] = useState(false);
   const [lang, setLang] = useState("en");
 
@@ -95,6 +98,8 @@ export default function App() {
       setProxyProfile(profileName);
       setProxyPort(actualPort);
       setProxyUsage({ inputTokens: 0, outputTokens: 0, requests: 0 });
+      setProxyDebug(false);
+      setProxyDebugLogs([]);
       setProxyRunning(true);
       setProxyError(null);
       flash(t("proxyStarted", { port: actualPort, target: baseUrl }), "success");
@@ -112,6 +117,8 @@ export default function App() {
     setProxyRunning(false);
     setProxyError(null);
     setProxyUsage(null);
+    setProxyDebug(false);
+    setProxyDebugLogs([]);
     flash(t("proxyStopped"), "success");
   };
 
@@ -149,6 +156,9 @@ export default function App() {
     settingsEditValue,
     settingsEditMode,
     settingsEditStep,
+    proxyRunning,
+    proxyDebug,
+    debugScroll,
   };
 
   const reload = () => {
@@ -172,15 +182,40 @@ export default function App() {
     reload();
   }, []);
 
-  // 프록시 토큰 사용량 주기 갱신 (1초)
+  // 프록시 토큰 사용량 주기 갱신 (1초) — 값 변경 시에만 업데이트 (깜빡임 방지)
   useEffect(() => {
     const timer = setInterval(() => {
       if (proxyRef.current && proxyRef.current.running) {
-        setProxyUsage({ ...proxyRef.current.usage });
+        const u = proxyRef.current.usage;
+        setProxyUsage((prev) =>
+          prev &&
+          prev.inputTokens === u.inputTokens &&
+          prev.outputTokens === u.outputTokens &&
+          prev.requests === u.requests
+            ? prev
+            : { ...u }
+        );
       }
     }, 1000);
     return () => clearInterval(timer);
   }, []);
+
+  // 디버그 창이 열려 있을 때만 로그 갱신 (내용이 바뀔 때만 업데이트 — 깜빡임 방지)
+  useEffect(() => {
+    if (!proxyDebug) return;
+    const timer = setInterval(() => {
+      if (proxyRef.current && proxyRef.current.running) {
+        const logs = proxyRef.current.debugLogs || [];
+        setProxyDebugLogs((prev) => {
+          if (prev.length === logs.length && prev[prev.length - 1] === logs[logs.length - 1]) {
+            return prev;
+          }
+          return [...logs];
+        });
+      }
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [proxyDebug]);
 
   const flash = (text, type = "info") => {
     setMessage({ text, type });
@@ -522,6 +557,27 @@ export default function App() {
       }
       return;
     }
+    // D: 프록시 디버그 창 열기/닫기 (proxy 실행 중일 때만)
+    if (input === "D" && s.proxyRunning) {
+      const next = !s.proxyDebug;
+      setProxyDebug(next);
+      setDebugScroll(0);
+      if (proxyRef.current) {
+        proxyRef.current.debug = next;
+      }
+      flash(next ? t("proxyDebugOn") : t("proxyDebugOff"), "info");
+      return;
+    }
+    // 디버그 창이 열려 있으면 PgUp/PgDn으로 로그 스크롤 (↑/↓는 프로필 이동 유지)
+    if (s.proxyDebug && (key.pageUp || key.pageDown)) {
+      const maxScroll = Math.max(0, proxyDebugLogs.length - 20);
+      if (key.pageUp) {
+        setDebugScroll(Math.max(0, (s.debugScroll || 0) - 4));
+      } else {
+        setDebugScroll(Math.min(maxScroll, (s.debugScroll || 0) + 4));
+      }
+      return;
+    }
     if (input === "n") {
       setEditingProfile(null);
       setFormStepIdx(0);
@@ -668,6 +724,7 @@ export default function App() {
         proxyPort,
         proxyFilter,
         proxyUsage,
+        proxyDebug,
       }),
       e(
         Box,
@@ -708,6 +765,9 @@ export default function App() {
             renameValue,
             settingsContent,
             activeProfileName: activeProfile,
+            proxyDebug,
+            proxyDebugLogs,
+            debugScroll,
             settingsEditIndex,
             settingsEditKey,
             settingsEditValue,

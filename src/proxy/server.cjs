@@ -10,6 +10,8 @@ const { anthropicToOpenAI, openAIToAnthropic } = require("./convert.cjs");
 const { StreamConverter } = require("./stream.cjs");
 
 const BACKUP_FILE = path.join(os.homedir(), ".claude-api-manager", "proxy-settings-backup.json");
+const DEBUG_LOG_FILE = path.join(os.homedir(), ".claude-api-manager", "proxy-debug.log");
+const MAX_DEBUG_LOGS = 100;
 
 /**
  * OpenAI 호환 API 프록시 서버
@@ -29,6 +31,28 @@ class ProxyServer {
     this.settingsBackup = null;
     this.upstreamFormat = null; // null | "anthropic" | "openai"
     this.usage = { inputTokens: 0, outputTokens: 0, requests: 0 };
+    this.debug = !!options.debug;
+    this.debugLogs = [];
+    // 로그 파일 초기화 (시작 시 새로 시작)
+    try {
+      fs.mkdirSync(path.dirname(DEBUG_LOG_FILE), { recursive: true });
+      fs.writeFileSync(DEBUG_LOG_FILE, `=== proxy debug log started ${new Date().toISOString()} ===\n`, "utf-8");
+    } catch {}
+  }
+
+  // 디버그 로그: 항상 수집(메모리+파일), --debug 또는 TUI 디버그 창일 때 화면 출력
+  log(...args) {
+    const line = `[${new Date().toISOString()}] ${args.join(" ")}`;
+    this.debugLogs.push(line);
+    if (this.debugLogs.length > MAX_DEBUG_LOGS) {
+      this.debugLogs.shift();
+    }
+    try {
+      fs.appendFileSync(DEBUG_LOG_FILE, line + "\n", "utf-8");
+    } catch {}
+    if (this.debug) {
+      console.error(line);
+    }
   }
 
   // 토큰 사용량 누적 (Anthropic 기준 input/output)
@@ -271,6 +295,7 @@ class ProxyServer {
     if (req.method === "POST" && req.url.split("?")[0] === "/v1/messages") {
       try {
         const body = await this.readBody(req);
+        this.log(`REQ ${req.method} ${req.url} model=${JSON.stringify(body.model)} stream=${!!body.stream} messages=${(body.messages || []).length}`);
         await this.handleMessages(body, req, res);
       } catch (err) {
         console.error(`[proxy] Error: ${err.message}`);
@@ -382,6 +407,7 @@ class ProxyServer {
       };
 
       const proxyReq = targetModule.request(options, (proxyRes) => {
+        this.log(`RES ${proxyRes.statusCode} (passthrough)`);
         res.writeHead(proxyRes.statusCode, {
           "Content-Type": proxyRes.headers["content-type"] || "application/json",
           "Cache-Control": "no-cache",
@@ -458,12 +484,16 @@ class ProxyServer {
     return new Promise((resolve, reject) => {
       const targetModule = options.port === 443 ? https : http;
       const proxyReq = targetModule.request(options, (proxyRes) => {
+        this.log(`RES ${proxyRes.statusCode} (sync)`);
         const chunks = [];
         proxyRes.on("data", (chunk) => chunks.push(chunk));
         proxyRes.on("end", () => {
           try {
             const raw = Buffer.concat(chunks).toString();
             const openaiResponse = JSON.parse(raw);
+            if (proxyRes.statusCode >= 400) {
+              this.log(`UPSTREAM ERROR ${proxyRes.statusCode}: ${raw.slice(0, 500)}`);
+            }
             const anthropicResponse = openAIToAnthropic(openaiResponse);
             anthropicResponse.model = model || anthropicResponse.model;
             // 사용량 누적 (OpenAI: prompt_tokens/completion_tokens)
@@ -525,6 +555,14 @@ class ProxyServer {
 
       const targetModule = options.port === 443 ? https : http;
       const proxyReq = targetModule.request(options, (proxyRes) => {
+        this.log(`RES ${proxyRes.statusCode} (stream)`);
+        if (proxyRes.statusCode >= 400) {
+          let errBody = "";
+          proxyRes.on("data", (c) => (errBody += c.toString()));
+          proxyRes.on("end", () => {
+            this.log(`UPSTREAM ERROR ${proxyRes.statusCode}: ${errBody.slice(0, 500)}`);
+          });
+        }
         let buffer = "";
 
         proxyRes.on("data", (chunk) => {

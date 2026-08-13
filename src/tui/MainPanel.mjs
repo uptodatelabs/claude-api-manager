@@ -42,6 +42,9 @@ export default function MainPanel({
   onSettingsEditKeyChange,
   onSettingsEditValueChange,
   onSettingsEditSubmit,
+  proxyDebug,
+  proxyDebugLogs,
+  debugScroll,
 }) {
   // 포커스 시 borderColor: cyan, 비포커스 시 gray
   const activeBorder = focus ? "cyan" : "gray";
@@ -342,11 +345,51 @@ export default function MainPanel({
 
     switch (view) {
       case "detail":
-        return e(ProfileDetail, {
-          profile,
-          borderColor: activeBorder,
-          isActive: !!profile && profile.name === activeProfileName,
-        });
+        return e(
+          Box,
+          { flexDirection: "column", flexGrow: 1 },
+          e(ProfileDetail, {
+            profile,
+            borderColor: activeBorder,
+            isActive: !!profile && profile.name === activeProfileName,
+          }),
+          proxyDebug
+            ? e(
+                Box,
+                {
+                  flexDirection: "column",
+                  borderStyle: "round",
+                  borderColor: colors.warning,
+                  marginTop: 1,
+                  paddingX: 1,
+                  paddingY: 1,
+                  height: 12,
+                  flexShrink: 0,
+                  overflowY: "hidden",
+                },
+                e(
+                  Box,
+                  { marginBottom: 1, flexShrink: 0 },
+                  e(Text, { color: colors.warning, bold: true }, "[D] " + t("debugTitle")),
+                  e(Text, { color: colors.muted }, "  (" + t("debugFile") + ": ~/.claude-api-manager/proxy-debug.log)"),
+                  e(Text, { color: colors.muted }, "  [PgUp/PgDn " + t("scroll") + "]")
+                ),
+                proxyDebugLogs.length === 0
+                  ? e(Text, { color: colors.muted, flexShrink: 0 }, "  " + t("noLogs"))
+                  : proxyDebugLogs.slice(-20).slice(debugScroll, debugScroll + 8).map((l, i) =>
+                      e(
+                        Text,
+                        { key: i, wrap: "truncate-end", flexShrink: 0 },
+                        e(
+                          Text,
+                          { color: l.includes("RES ") || l.includes("ERROR") ? colors.danger : colors.primary },
+                          l
+                        )
+                      )
+                    )
+              )
+            : null
+        );
 
       case "diff":
         return e(DiffView, { profile, current: currentSettings, borderColor: activeBorder });

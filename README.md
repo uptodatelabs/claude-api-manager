@@ -143,13 +143,15 @@ Connect OpenAI-compatible APIs (Ollama, LiteLLM, Groq, etc.) to Claude Code thro
 1. Select a profile with `ANTHROPIC_BASE_URL` pointing to an OpenAI-compatible API
 2. Press `p` to start the proxy
 3. Status bar shows `* profile:port` and live token usage (`in X / out Y / req N`)
-4. Press `p` again to stop (settings.json is automatically restored)
+4. Press `D` to open/close the debug log window (scroll with `PgUp`/`PgDn`)
+5. Press `p` again to stop (settings.json is automatically restored)
 
 **From CLI:**
 
 ```bash
 cam proxy <profile-name>              # Start proxy on default port 3456
 cam proxy <profile-name> --port 5678  # Custom port
+cam proxy <profile-name> --debug      # Print request/response logs to terminal
 ```
 
 The proxy automatically:
@@ -379,13 +381,15 @@ cam                # 인자 없이 실행 → TUI 진입
 1. `ANTHROPIC_BASE_URL`이 OpenAI 호환 API를 가리키는 프로필을 선택
 2. `p` 키로 프록시 시작
 3. 상태바에 `* profile:port`와 실시간 토큰 사용량(`in X / out Y / req N`) 표시
-4. 다시 `p` 키로 프록시 중지 (settings.json 자동 복구)
+4. `D` 키로 디버그 로그 창 열기/닫기 (`PgUp`/`PgDn`으로 스크롤)
+5. 다시 `p` 키로 프록시 중지 (settings.json 자동 복구)
 
 **CLI에서:**
 
 ```bash
 cam proxy <프로필-이름>              # 기본 포트 3456으로 프록시 시작
 cam proxy <프로필-이름> --port 5678  # 커스텀 포트
+cam proxy <프로필-이름> --debug      # 요청/응답 로그를 터미널에 출력
 ```
 
 프록시가 자동으로 수행하는 작업:

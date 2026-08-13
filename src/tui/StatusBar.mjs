@@ -17,7 +17,7 @@ function formatTokens(n) {
   return String(n);
 }
 
-export default function StatusBar({ activeProfile, view, mode, message, lang, proxyRunning, proxyProfile, proxyPort, proxyFilter, proxyUsage }) {
+export default function StatusBar({ activeProfile, view, mode, message, lang, proxyRunning, proxyProfile, proxyPort, proxyFilter, proxyUsage, proxyDebug }) {
   const { t } = useI18n();
 
   // 1번째 줄: 앱 정보 + 언어
@@ -61,6 +61,12 @@ export default function StatusBar({ activeProfile, view, mode, message, lang, pr
       e(Text, { color: colors.muted }, " │ "),
       e(Text, { color: colors.success }, `* ${proxyProfile}:${proxyPort}`)
     );
+    if (proxyDebug) {
+      line2.push(
+        e(Text, { color: colors.muted }, " │ "),
+        e(Text, { color: colors.warning }, `[D] ${t("debugOn")}`)
+      );
+    }
     if (proxyUsage) {
       line2.push(
         e(Text, { color: colors.muted }, " │ "),

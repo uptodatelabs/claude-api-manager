@@ -1,12 +1,12 @@
 "use strict";
-import React from "react";
+import React, { memo } from "react";
 import { Box, Text } from "ink";
 import { colors } from "./theme.mjs";
 import { useI18n } from "./i18n.mjs";
 
 const e = React.createElement;
 
-export default function Footer({ hints }) {
+const Footer = memo(function Footer({ hints }) {
   const { t } = useI18n();
   // 전체 명령어 표시 (모든 키 안내)
   const defaultHints = [
@@ -24,6 +24,7 @@ export default function Footer({ hints }) {
     { key: "i", label: t("import") },
     { key: "x", label: t("export") },
     { key: "p", label: t("proxy") },
+    { key: "D", label: t("proxyDebug") },
     { key: "f", label: t("proxyFilter") },
     { key: "s", label: t("settings") },
     { key: "Tab", label: t("focus") },
@@ -64,4 +65,6 @@ export default function Footer({ hints }) {
     e(Text, { wrap: "truncate-end" }, ...renderRow(row1, "a")),
     e(Text, { wrap: "truncate-end" }, ...renderRow(row2, "b"))
   );
-}
+});
+
+export default Footer;

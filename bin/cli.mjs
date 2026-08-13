@@ -235,6 +235,7 @@ program
   .description("OpenAI 호환 API 프록시 서버 시작")
   .option("-p, --port <port>", "프록시 서버 포트", "3456")
   .option("-m, --model <model>", "OpenAI API 모델 오버라이드")
+  .option("-d, --debug", "디버그 로그 출력 (요청/응답 상태)")
   .action(async (name, opts) => {
     try {
       const profile = manager.getProfile(name);
@@ -261,6 +262,7 @@ program
         model,
         profileName: name,
         manager,
+        debug: !!opts.debug,
       });
 
       await server.start();
@@ -270,6 +272,9 @@ program
       console.log(chalk.dim(`  프록시: http://127.0.0.1:${port}`));
       console.log(chalk.dim(`  타겟:  ${baseUrl}`));
       console.log(chalk.dim(`  모델:  ${model || "(프로필 기본값)"}`));
+      if (opts.debug) {
+        console.log(chalk.yellow(`  디버그: 켜짐 (요청/응답 로그 출력)`));
+      }
       console.log();
       console.log(chalk.bold("Claude Code에서 사용:"));
       console.log(chalk.cyan(`  ANTHROPIC_BASE_URL=http://127.0.0.1:${port} claude`));
