@@ -139,6 +139,8 @@ In edit mode, enter `-` in a field to delete its value.
 
 Connect OpenAI-compatible APIs (Ollama, LiteLLM, Groq, etc.) to Claude Code through a local proxy server.
 
+> **Note:** This proxy is exclusively for converting Anthropic format to OpenAI format. If your provider already supports the Anthropic API format natively, configure it directly in `settings.json` — no proxy needed.
+
 **From TUI:**
 1. Select a profile with `ANTHROPIC_BASE_URL` pointing to an OpenAI-compatible API
 2. Press `p` to start the proxy
@@ -376,6 +378,8 @@ cam                # 인자 없이 실행 → TUI 진입
 #### OpenAI 호환 프록시
 
 로컬 프록시 서버를 통해 OpenAI 호환 API(Ollama, LiteLLM, Groq 등)를 Claude Code에 연결합니다.
+
+> **참고:** 이 프록시는 Anthropic 형식을 OpenAI 형식으로 변환하는 전용입니다. 공급자가 이미 Anthropic API 형식을 지원하면 `settings.json`에 직접 설정하세요 — 프록시가 필요 없습니다.
 
 **TUI에서:**
 1. `ANTHROPIC_BASE_URL`이 OpenAI 호환 API를 가리키는 프로필을 선택
