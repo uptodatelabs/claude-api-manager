@@ -15,8 +15,8 @@ const MAX_DEBUG_LOGS = 100;
 
 /**
  * OpenAI 호환 API 프록시 서버
- * Claude Code → (Anthropic 형식) → 프록시 → (OpenAI 형식) → OpenAI 호환 API
- * upstream이 이미 Anthropic 형식이면 자동 감지하여 passthrough
+ * Claude Code → (Anthropic 형식) → 프록시 → (OpenAI 형식 변환) → /v1/chat/completions
+ * Anthropic 방식 공급자는 settings.json에 직접 설정하면 되므로 proxy 불필요
  */
 class ProxyServer {
   constructor(options = {}) {
@@ -29,7 +29,6 @@ class ProxyServer {
     this.server = null;
     this.running = false;
     this.settingsBackup = null;
-    this.upstreamFormat = null; // null | "anthropic" | "openai"
     this.usage = { inputTokens: 0, outputTokens: 0, requests: 0 };
     this.debug = !!options.debug;
     this.debugLogs = [];
@@ -60,59 +59,6 @@ class ProxyServer {
     if (Number.isFinite(inputTokens)) this.usage.inputTokens += inputTokens;
     if (Number.isFinite(outputTokens)) this.usage.outputTokens += outputTokens;
     this.usage.requests += 1;
-  }
-
-  // upstream 형식 감지 (Anthropic Messages vs OpenAI Chat Completions)
-  detectUpstreamFormat() {
-    if (this.upstreamFormat) return Promise.resolve(this.upstreamFormat);
-    return new Promise((resolve) => {
-      const base = this.targetUrl.replace(/\/+$/, "");
-      // base가 /v1로 끝나면 중복 방지
-      const apiBase = base.endsWith("/v1") ? base : base + "/v1";
-      const targetUrl = new URL(apiBase + "/messages");
-      const targetModule = targetUrl.protocol === "https:" ? https : http;
-      const probeBody = JSON.stringify({
-        model: this.model || "claude-sonnet-4-5",
-        max_tokens: 1,
-        messages: [{ role: "user", content: "." }],
-      });
-      const options = {
-        hostname: targetUrl.hostname,
-        port: targetUrl.port || (targetUrl.protocol === "https:" ? 443 : 80),
-        path: targetUrl.pathname,
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-api-key": this.apiKey,
-          "anthropic-version": "2023-06-01",
-        },
-        timeout: 10000,
-      };
-      const req = targetModule.request(options, (res) => {
-        let data = "";
-        res.on("data", (c) => (data += c));
-        res.on("end", () => {
-          try {
-            const parsed = JSON.parse(data);
-            // Anthropic 형식: type=message + id=msg_ 또는 content 배열
-            if (parsed.type === "message" || parsed.id?.startsWith("msg_") || Array.isArray(parsed.content)) {
-              this.upstreamFormat = "anthropic";
-            } else {
-              this.upstreamFormat = "openai";
-            }
-          } catch {
-            this.upstreamFormat = "openai";
-          }
-          resolve(this.upstreamFormat);
-        });
-      });
-      req.on("error", () => {
-        this.upstreamFormat = "openai";
-        resolve(this.upstreamFormat);
-      });
-      req.write(probeBody);
-      req.end();
-    });
   }
 
   start() {
@@ -337,21 +283,12 @@ class ProxyServer {
   }
 
   async handleMessages(body, req, res) {
-    // 분류기 요청이면 프로필 모델로 치환 (passthrough 경로에서 적용)
+    // 분류기 요청이면 프로필 모델로 치환
     if (this.isClassifierRequest(body.model)) {
       body.model = this.model;
     }
 
-    // upstream 형식 감지 (최초 1회)
-    const format = await this.detectUpstreamFormat();
-
-    // Anthropic 형식 upstream → passthrough (변환 없이 전달)
-    if (format === "anthropic") {
-      await this.passthrough(body, req, res);
-      return;
-    }
-
-    // Anthropic → OpenAI 변환
+    // Anthropic → OpenAI 변환 (proxy의 유일한 목적)
     const openaiRequest = anthropicToOpenAI(body);
     if (this.model) {
       openaiRequest.model = this.model;
@@ -383,101 +320,6 @@ class ProxyServer {
     } else {
       await this.handleSync(options, openaiRequest, body.model, res);
     }
-  }
-
-  // Anthropic 형식 upstream으로 원본 요청 전달 (스트리밍 포함)
-  passthrough(body, req, res) {
-    return new Promise((resolve) => {
-      const base = this.targetUrl.replace(/\/+$/, "");
-      const apiBase = base.endsWith("/v1") ? base : base + "/v1";
-      const targetUrl = new URL(apiBase + "/messages");
-      const targetModule = targetUrl.protocol === "https:" ? https : http;
-      const options = {
-        hostname: targetUrl.hostname,
-        port: targetUrl.port || (targetUrl.protocol === "https:" ? 443 : 80),
-        path: targetUrl.pathname,
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-api-key": this.apiKey,
-          "anthropic-version": "2023-06-01",
-          "anthropic-beta": req.headers["anthropic-beta"] || "",
-        },
-        timeout: 300000,
-      };
-
-      const proxyReq = targetModule.request(options, (proxyRes) => {
-        this.log(`RES ${proxyRes.statusCode} (passthrough)`);
-        res.writeHead(proxyRes.statusCode, {
-          "Content-Type": proxyRes.headers["content-type"] || "application/json",
-          "Cache-Control": "no-cache",
-        });
-
-        const contentType = proxyRes.headers["content-type"] || "";
-        const isStream = contentType.includes("text/event-stream");
-        let buffer = "";
-        let inputTokens = 0;
-        let outputTokens = 0;
-        const jsonChunks = [];
-
-        proxyRes.on("data", (chunk) => {
-          if (isStream) {
-            res.write(chunk);
-            // SSE 이벤트에서 usage 추출 (message_start / message_delta)
-            buffer += chunk.toString();
-            const events = buffer.split("\n\n");
-            buffer = events.pop();
-            for (const evt of events) {
-              for (const line of evt.split("\n")) {
-                if (!line.startsWith("data: ")) continue;
-                try {
-                  const parsed = JSON.parse(line.slice(6));
-                  const u = parsed.message && parsed.message.usage
-                    ? parsed.message.usage
-                    : parsed.usage;
-                  if (!u) continue;
-                  if (Number.isFinite(u.input_tokens)) inputTokens = u.input_tokens;
-                  if (Number.isFinite(u.output_tokens)) outputTokens = u.output_tokens;
-                } catch {}
-              }
-            }
-          } else {
-            jsonChunks.push(chunk);
-            res.write(chunk);
-          }
-        });
-
-        proxyRes.on("end", () => {
-          if (!isStream) {
-            try {
-              const parsed = JSON.parse(Buffer.concat(jsonChunks).toString());
-              const u = parsed.usage || (parsed.message && parsed.message.usage);
-              if (u) {
-                inputTokens = u.input_tokens || 0;
-                outputTokens = u.output_tokens || 0;
-              }
-            } catch {}
-          }
-          this.addUsage(inputTokens, outputTokens);
-          res.end();
-          resolve();
-        });
-      });
-
-      proxyReq.on("error", (err) => {
-        res.writeHead(502);
-        res.end(
-          JSON.stringify({
-            type: "error",
-            error: { type: "api_error", message: `Upstream connection error: ${err.message}` },
-          })
-        );
-        resolve();
-      });
-
-      proxyReq.write(JSON.stringify(body));
-      proxyReq.end();
-    });
   }
 
   handleSync(options, openaiRequest, model, res) {
