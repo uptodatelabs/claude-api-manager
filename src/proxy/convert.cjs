@@ -18,17 +18,19 @@ function convertSystemToMessages(system) {
 
 function convertAnthropicContent(content) {
   // content가 문자열이면 그대로 반환
-  if (typeof content === "string") return { text: content, toolCalls: [], toolResults: [] };
+  if (typeof content === "string") return { text: content, thinking: "", toolCalls: [], toolResults: [] };
 
   const toolCalls = [];
   const toolResults = [];
   const textParts = [];
+  const thinkingParts = [];
 
   for (const block of content) {
     if (block.type === "text") {
       textParts.push(block.text || "");
     } else if (block.type === "thinking") {
-      // thinking은 무시 (OpenAI에는 해당 없음)
+      // thinking → OpenAI reasoning_content (thinking 모드 upstream은 이를 돌려받아야 함)
+      thinkingParts.push(block.thinking || "");
     } else if (block.type === "tool_use") {
       toolCalls.push({
         id: block.id,
@@ -58,6 +60,7 @@ function convertAnthropicContent(content) {
 
   return {
     text: textParts.join("\n"),
+    thinking: thinkingParts.join(""),
     toolCalls,
     toolResults,
   };
@@ -86,26 +89,37 @@ function anthropicToOpenAI(body) {
   messages.push(...systemMessages);
 
   // messages 변환
+  let lastAssistantHadToolCalls = false;
   for (const msg of body.messages || []) {
-    const { text, toolCalls, toolResults } = convertAnthropicContent(msg.content);
+    const { text, thinking, toolCalls, toolResults } = convertAnthropicContent(msg.content);
 
     if (msg.role === "user") {
+      // tool_result는 이전 assistant의 tool_calls에 대한 응답이므로
+      // OpenAI 규격상 assistant(tool_calls) 직후(tool role)에 와야 함 — text보다 먼저 push
+      if (lastAssistantHadToolCalls && toolResults.length > 0) {
+        messages.push(...toolResults);
+      }
       if (text) {
         messages.push({ role: "user", content: text });
       }
-      // tool_result는 tool role로 추가
-      messages.push(...toolResults);
+      lastAssistantHadToolCalls = false;
     } else if (msg.role === "assistant") {
-      if (text || toolCalls.length > 0) {
+      if (text || toolCalls.length > 0 || thinking) {
         const assistantMsg = { role: "assistant", content: text || null };
+        if (thinking) {
+          // thinking 모드 upstream은 이전 reasoning_content를 돌려받아야 함
+          assistantMsg.reasoning_content = thinking;
+        }
         if (toolCalls.length > 0) {
           assistantMsg.tool_calls = toolCalls;
         }
         messages.push(assistantMsg);
       }
+      lastAssistantHadToolCalls = toolCalls.length > 0;
     } else if (msg.role === "tool") {
       // 직접 tool role 메시지 (드문 경우)
       messages.push(msg);
+      lastAssistantHadToolCalls = false;
     }
   }
 
@@ -195,6 +209,14 @@ function openAIToAnthropic(openaiResponse) {
   }
 
   const content = [];
+  // thinking 모드 upstream의 reasoning_content → thinking 블록 (text보다 먼저)
+  if (choice.message.reasoning_content) {
+    content.push({
+      type: "thinking",
+      thinking: choice.message.reasoning_content,
+      signature: "",
+    });
+  }
   if (choice.message.content) {
     content.push({
       type: "text",

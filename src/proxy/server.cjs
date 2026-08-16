@@ -332,10 +332,25 @@ class ProxyServer {
         proxyRes.on("end", () => {
           try {
             const raw = Buffer.concat(chunks).toString();
-            const openaiResponse = JSON.parse(raw);
             if (proxyRes.statusCode >= 400) {
               this.log(`UPSTREAM ERROR ${proxyRes.statusCode}: ${raw.slice(0, 500)}`);
+              // upstream 에러 본문을 그대로 전달 (Claude Code가 실제 에러 메시지 표시)
+              let errMsg = `Upstream error (${proxyRes.statusCode})`;
+              try {
+                const parsed = JSON.parse(raw);
+                errMsg = (parsed.error && parsed.error.message) || errMsg;
+              } catch {}
+              res.writeHead(proxyRes.statusCode, { "Content-Type": "application/json" });
+              res.end(
+                JSON.stringify({
+                  type: "error",
+                  error: { type: "api_error", message: errMsg },
+                })
+              );
+              resolve();
+              return;
             }
+            const openaiResponse = JSON.parse(raw);
             const anthropicResponse = openAIToAnthropic(openaiResponse);
             anthropicResponse.model = model || anthropicResponse.model;
             // 사용량 누적 (OpenAI: prompt_tokens/completion_tokens)
@@ -399,11 +414,21 @@ class ProxyServer {
       const proxyReq = targetModule.request(options, (proxyRes) => {
         this.log(`RES ${proxyRes.statusCode} (stream)`);
         if (proxyRes.statusCode >= 400) {
+          // upstream 에러 본문을 읽어 실제 에러 메시지를 SSE error 이벤트로 전달
           let errBody = "";
           proxyRes.on("data", (c) => (errBody += c.toString()));
           proxyRes.on("end", () => {
             this.log(`UPSTREAM ERROR ${proxyRes.statusCode}: ${errBody.slice(0, 500)}`);
+            let errMsg = `Upstream error (${proxyRes.statusCode})`;
+            try {
+              const parsed = JSON.parse(errBody);
+              errMsg = (parsed.error && parsed.error.message) || errMsg;
+            } catch {}
+            converter.sendError(proxyRes.statusCode, errMsg);
+            res.end();
+            resolve();
           });
+          return;
         }
         let buffer = "";
 

@@ -28,6 +28,7 @@ class StreamConverter {
     this.blockIndex = 0;
     this.blockStarted = false;
     this.textBlockOpen = false;
+    this.thinkingBlockOpen = false;
     this.toolBlocks = {}; // index → { id, name, started }
     this.inputTokens = 0;
     this.outputTokens = 0;
@@ -57,6 +58,10 @@ class StreamConverter {
 
   ensureTextBlockOpen() {
     this.ensureStarted();
+    // thinking 블록이 열려 있으면 먼저 닫기 (블록 인덱스 충돌 방지)
+    if (this.thinkingBlockOpen) {
+      this.closeThinkingBlock();
+    }
     if (!this.textBlockOpen) {
       this.textBlockOpen = true;
       this.writeSSE("content_block_start", {
@@ -78,6 +83,35 @@ class StreamConverter {
     }
   }
 
+  handleThinkingDelta(text) {
+    if (!text) return;
+    this.ensureStarted();
+    if (!this.thinkingBlockOpen) {
+      this.thinkingBlockOpen = true;
+      this.writeSSE("content_block_start", {
+        type: "content_block_start",
+        index: this.blockIndex,
+        content_block: { type: "thinking", thinking: "" },
+      });
+    }
+    this.writeSSE("content_block_delta", {
+      type: "content_block_delta",
+      index: this.blockIndex,
+      delta: { type: "thinking_delta", thinking: text },
+    });
+  }
+
+  closeThinkingBlock() {
+    if (this.thinkingBlockOpen) {
+      this.writeSSE("content_block_stop", {
+        type: "content_block_stop",
+        index: this.blockIndex,
+      });
+      this.blockIndex++;
+      this.thinkingBlockOpen = false;
+    }
+  }
+
   handleTextDelta(text) {
     if (!text) return;
     this.ensureTextBlockOpen();
@@ -90,6 +124,9 @@ class StreamConverter {
 
   handleToolCallStart(toolCall) {
     this.ensureStarted();
+    if (this.thinkingBlockOpen) {
+      this.closeThinkingBlock();
+    }
     this.closeTextBlock();
     const idx = this.blockIndex;
     this.toolBlocks[idx] = {
@@ -153,6 +190,11 @@ class StreamConverter {
       const delta = chunk.choices[0].delta || {};
       const finishReason = chunk.choices[0].finish_reason;
 
+      // reasoning_content (thinking 모드 upstream)
+      if (delta.reasoning_content) {
+        this.handleThinkingDelta(delta.reasoning_content);
+      }
+
       // content 텍스트
       if (delta.content) {
         this.handleTextDelta(delta.content);
@@ -179,6 +221,9 @@ class StreamConverter {
   }
 
   finish(finishReason) {
+    if (this.thinkingBlockOpen) {
+      this.closeThinkingBlock();
+    }
     this.closeTextBlock();
     // 열린 tool_use 블록 닫기
     for (const idx of Object.keys(this.toolBlocks)) {
@@ -200,15 +245,16 @@ class StreamConverter {
   }
 
   /**
-   * 프록시 에러를 Anthropic 형식으로 반환
+   * 프록시/upstream 에러를 Anthropic error 이벤트로 반환
    */
   sendError(status, message) {
     this.ensureStarted();
-    this.closeTextBlock();
-    this.writeSSE("message_delta", {
-      type: "message_delta",
-      delta: { stop_reason: "end_turn", stop_sequence: null },
-      usage: { output_tokens: 0 },
+    if (this.thinkingBlockOpen || this.textBlockOpen || Object.keys(this.toolBlocks).length > 0) {
+      this.finish("stop");
+    }
+    this.writeSSE("error", {
+      type: "error",
+      error: { type: "api_error", message: message || `Upstream error (${status})` },
     });
     this.writeSSE("message_stop", { type: "message_stop" });
   }
