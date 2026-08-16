@@ -43,7 +43,7 @@ const program = new Command();
 program
   .name("cam")
   .description("Claude API Manager - settings.json의 API 설정을 관리하는 TUI")
-  .version("2.2.0");
+  .version("2.3.0");
 
 program
   .command("list")
