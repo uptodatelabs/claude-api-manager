@@ -154,7 +154,10 @@ Connect OpenAI-compatible APIs (Ollama, LiteLLM, Groq, etc.) to Claude Code thro
 cam proxy <profile-name>              # Start proxy on default port 3456
 cam proxy <profile-name> --port 5678  # Custom port
 cam proxy <profile-name> --debug      # Print request/response logs to terminal
+cam proxy <profile-name> --force      # Kill the process occupying the port and start
 ```
+
+If the port is already in use, the proxy shows a clear error (with the occupying process's PID) instead of silently moving to another port — this prevents background servers from accumulating. Use `--port` to pick another port or `--force` to terminate the occupying process.
 
 The proxy automatically:
 1. **Backs up** your current `settings.json` (the active profile's env)
@@ -394,7 +397,10 @@ cam                # 인자 없이 실행 → TUI 진입
 cam proxy <프로필-이름>              # 기본 포트 3456으로 프록시 시작
 cam proxy <프로필-이름> --port 5678  # 커스텀 포트
 cam proxy <프로필-이름> --debug      # 요청/응답 로그를 터미널에 출력
+cam proxy <프로필-이름> --force      # 포트 점유 프로세스를 종료하고 시작
 ```
+
+포트가 이미 사용 중이면 조용히 다른 포트로 이동하지 않고 점유 프로세스(PID 포함)를 안내하는 명확한 에러를 표시합니다 — 백그라운드 서버 누적을 방지합니다. `--port`로 다른 포트를 지정하거나 `--force`로 점유 프로세스를 종료하세요.
 
 프록시가 자동으로 수행하는 작업:
 1. 현재 `settings.json` **백업** (활성 프로필 env 기준)

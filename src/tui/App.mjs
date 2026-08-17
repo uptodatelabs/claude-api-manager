@@ -4,7 +4,7 @@ import { Box, Text, useApp, useInput } from "ink";
 import { createRequire } from "module";
 const require = createRequire(import.meta.url);
 const manager = require("../manager.cjs");
-const { ProxyServer } = require("../proxy/server.cjs");
+const { ProxyServer, findPidOnPort, getProcessName, killPids } = require("../proxy/server.cjs");
 
 import StatusBar from "./StatusBar.mjs";
 import Footer from "./Footer.mjs";
@@ -104,7 +104,29 @@ export default function App() {
       setProxyError(null);
       flash(t("proxyStarted", { port: actualPort, target: baseUrl }), "success");
     } catch (err) {
-      setProxyError(err.message);
+      // 포트 점유 시 점유 프로세스 정보를 함께 표시 (K 키로 정리 가능)
+      if (err.code === "EADDRINUSE") {
+        let detail = "";
+        let pids = [];
+        try {
+          pids = await findPidOnPort(port);
+          const names = [];
+          for (const pid of pids) {
+            const pname = await getProcessName(pid);
+            names.push(pname ? `${pname} (PID ${pid})` : `PID ${pid}`);
+          }
+          if (names.length > 0) detail = ` — ${names.join(", ")}`;
+        } catch {}
+        setProxyError({
+          message: t("proxyPortInUse", { port, detail }),
+          port,
+          pids,
+        });
+        flash(t("proxyPortInUse", { port, detail }), "danger");
+      } else {
+        setProxyError({ message: err.message, port: null, pids: [] });
+        flash(err.message, "danger");
+      }
     }
   };
 
@@ -176,10 +198,13 @@ export default function App() {
 
   useEffect(() => {
     // 이전 실행에서 프록시가 급작 종료되어 남은 설정 백업이 있으면 복원
-    if (ProxyServer.restoreFromDisk(manager)) {
-      flash(t("proxyRestored"), "info");
-    }
-    reload();
+    // (실행 중인 프록시의 백업은 건드리지 않음 — restoreFromDisk 내부에서 판단)
+    (async () => {
+      if (await ProxyServer.restoreFromDisk(manager)) {
+        flash(t("proxyRestored"), "info");
+      }
+      reload();
+    })();
   }, []);
 
   // 프록시 토큰 사용량 주기 갱신 (1초) — 값 변경 시에만 업데이트 (깜빡임 방지)
@@ -557,6 +582,19 @@ export default function App() {
       }
       return;
     }
+    // K: 포트 점유 프로세스 정리 후 프록시 재시도 (proxyError가 포트 점유일 때)
+    if (input === "K" && proxyError && proxyError.pids && proxyError.pids.length > 0) {
+      const pids = proxyError.pids;
+      killPids(pids);
+      flash(t("proxyKilled", { pids: pids.join(", ") }), "info");
+      setProxyError(null);
+      setTimeout(() => {
+        if (s.activeProfileName) {
+          startProxy(s.activeProfileName, proxyError.port || proxyPort);
+        }
+      }, 400);
+      return;
+    }
     // D: 프록시 디버그 창 열기/닫기 (proxy 실행 중일 때만)
     if (input === "D" && s.proxyRunning) {
       const next = !s.proxyDebug;
@@ -725,6 +763,7 @@ export default function App() {
         proxyFilter,
         proxyUsage,
         proxyDebug,
+        proxyError,
       }),
       e(
         Box,
@@ -842,7 +881,17 @@ export default function App() {
           })
         )
       ),
-      e(Footer)
+      e(
+        Footer,
+        proxyError && proxyError.pids && proxyError.pids.length > 0
+          ? {
+              hints: [
+                { key: "K", label: t("portKill") },
+                { key: "Esc", label: t("back") },
+              ],
+            }
+          : {}
+      )
     )
   );
 }

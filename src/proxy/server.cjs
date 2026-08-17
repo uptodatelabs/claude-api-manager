@@ -5,6 +5,8 @@ const https = require("https");
 const fs = require("fs");
 const path = require("path");
 const os = require("os");
+const net = require("net");
+const { execFile } = require("child_process");
 const { URL } = require("url");
 const { anthropicToOpenAI, openAIToAnthropic } = require("./convert.cjs");
 const { StreamConverter } = require("./stream.cjs");
@@ -12,6 +14,78 @@ const { StreamConverter } = require("./stream.cjs");
 const BACKUP_FILE = path.join(os.homedir(), ".claude-api-manager", "proxy-settings-backup.json");
 const DEBUG_LOG_FILE = path.join(os.homedir(), ".claude-api-manager", "proxy-debug.log");
 const MAX_DEBUG_LOGS = 100;
+
+// 로컬 포트가 살아있는지 (프록시 실행 여부 판단용)
+function isPortOpen(port, host = "127.0.0.1", timeout = 300) {
+  return new Promise((resolve) => {
+    const sock = new net.Socket();
+    sock.setTimeout(timeout);
+    sock.once("connect", () => {
+      sock.destroy();
+      resolve(true);
+    });
+    sock.once("timeout", () => {
+      sock.destroy();
+      resolve(false);
+    });
+    sock.once("error", () => {
+      sock.destroy();
+      resolve(false);
+    });
+    sock.connect(port, host);
+  });
+}
+
+// ── 포트 점유 감지/정리 (Windows: netstat/tasklist, Unix: lsof) ──────
+
+function findPidOnPort(port) {
+  return new Promise((resolve) => {
+    const isWin = process.platform === "win32";
+    const cmd = isWin ? "netstat" : "lsof";
+    const args = isWin ? ["-ano", "-p", "tcp"] : ["-i", `:${port}`, "-sTCP:LISTEN", "-t"];
+    execFile(cmd, args, { timeout: 5000 }, (err, stdout) => {
+      if (err) return resolve([]);
+      const pids = [];
+      for (const line of String(stdout).split(/\r?\n/)) {
+        if (!line.includes(`:${port}`)) continue;
+        if (isWin) {
+          if (!line.includes("LISTENING")) continue;
+          const parts = line.trim().split(/\s+/);
+          const pid = parts[parts.length - 1];
+          if (pid && /^\d+$/.test(pid)) pids.push(parseInt(pid, 10));
+        } else {
+          const pid = line.trim();
+          if (/^\d+$/.test(pid)) pids.push(parseInt(pid, 10));
+        }
+      }
+      resolve([...new Set(pids)]);
+    });
+  });
+}
+
+function getProcessName(pid) {
+  return new Promise((resolve) => {
+    if (process.platform !== "win32") return resolve("");
+    execFile(
+      "tasklist",
+      ["/FI", `PID eq ${pid}`, "/FO", "CSV", "/NH"],
+      { timeout: 5000 },
+      (err, stdout) => {
+        if (err) return resolve("");
+        const m = String(stdout).match(/"([^"]+)"/);
+        resolve(m ? m[1] : "");
+      }
+    );
+  });
+}
+
+function killPids(pids) {
+  for (const pid of pids) {
+    try {
+      process.kill(pid, "SIGKILL");
+    } catch {}
+  }
+}
 
 /**
  * OpenAI 호환 API 프록시 서버
@@ -63,28 +137,22 @@ class ProxyServer {
 
   start() {
     return new Promise((resolve, reject) => {
-      const tryListen = (port) => {
-        const srv = http.createServer((req, res) => this.handleRequest(req, res));
-        srv.on("error", (err) => {
-          if (err.code === "EADDRINUSE" && port < this.port + 20) {
-            // 포트 사용 중 → 다음 포트로 자동 이동
-            tryListen(port + 1);
-          } else {
-            reject(err);
-          }
-        });
-        srv.listen(port, () => {
-          this.server = srv;
-          this.port = port;
-          this.running = true;
-          // listen 성공 후에만 settings.json 반영 (실패 시 잔여 설정 방지)
-          if (this.manager) {
-            this.applyProxySettings();
-          }
-          resolve();
-        });
-      };
-      tryListen(this.port);
+      // 포트 점유 시 EADDRINUSE를 그대로 전달 (자동 포트 이동 없음 —
+      // 조용한 이동은 백그라운드 서버 누적의 원인. 사용자에게 명확한 에러 안내)
+      const srv = http.createServer((req, res) => this.handleRequest(req, res));
+      srv.on("error", (err) => {
+        reject(err);
+      });
+      srv.listen(this.port, () => {
+        this.server = srv;
+        this.port = srv.address().port;
+        this.running = true;
+        // listen 성공 후에만 settings.json 반영 (실패 시 잔여 설정 방지)
+        if (this.manager) {
+          this.applyProxySettings();
+        }
+        resolve();
+      });
     });
   }
 
@@ -155,6 +223,19 @@ class ProxyServer {
 
   restoreSettings() {
     const current = this.manager.readSettings() || {};
+    const curBase =
+      current.env && current.env.ANTHROPIC_BASE_URL
+        ? String(current.env.ANTHROPIC_BASE_URL)
+        : "";
+    // 현재 설정이 이 프록시를 가리키고 있을 때만 복원.
+    // 다른 프록시 인스턴스가 나중에 settings.json을 덮어썼다면 건드리지 않음
+    if (!curBase.startsWith(`http://127.0.0.1:${this.port}`)) {
+      this.settingsBackup = null;
+      try {
+        fs.unlinkSync(BACKUP_FILE);
+      } catch {}
+      return;
+    }
     if (this.settingsBackup.env) {
       current.env = this.settingsBackup.env;
     } else {
@@ -172,12 +253,23 @@ class ProxyServer {
     } catch {}
   }
 
-  // 프로세스 급작 종료 등으로 남은 백업을 감지해 settings.json 복원
-  static restoreFromDisk(manager) {
+  // 프로세스 급작 종료 등으로 남은 백업을 감지해 settings.json 복원.
+  // 단, settings.json이 살아있는 프록시(127.0.0.1:PORT)를 가리키면 실행 중인
+  // 프록시의 백업이므로 복원하지 않음 (다른 cam 명령 실행으로 프록시 설정이
+  // 풀리는 문제 방지)
+  static async restoreFromDisk(manager) {
     if (!fs.existsSync(BACKUP_FILE)) return false;
     try {
-      const backup = JSON.parse(fs.readFileSync(BACKUP_FILE, "utf-8"));
       const current = manager.readSettings() || {};
+      const curBase =
+        current.env && current.env.ANTHROPIC_BASE_URL
+          ? String(current.env.ANTHROPIC_BASE_URL)
+          : "";
+      const curMatch = curBase.match(/^http:\/\/127\.0\.0\.1:(\d+)/);
+      if (curMatch && (await isPortOpen(parseInt(curMatch[1], 10)))) {
+        return false;
+      }
+      const backup = JSON.parse(fs.readFileSync(BACKUP_FILE, "utf-8"));
       // 백업이 없거나 프록시 주소면 활성 프로필 env로 복원
       let env = backup.env;
       const baseUrl = env && env.ANTHROPIC_BASE_URL ? String(env.ANTHROPIC_BASE_URL) : "";
@@ -514,4 +606,4 @@ class ProxyServer {
   }
 }
 
-module.exports = { ProxyServer };
+module.exports = { ProxyServer, findPidOnPort, getProcessName, killPids };

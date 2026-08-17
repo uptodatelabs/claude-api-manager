@@ -17,7 +17,7 @@ function formatTokens(n) {
   return String(n);
 }
 
-export default function StatusBar({ activeProfile, view, mode, message, lang, proxyRunning, proxyProfile, proxyPort, proxyFilter, proxyUsage, proxyDebug }) {
+export default function StatusBar({ activeProfile, view, mode, message, lang, proxyRunning, proxyProfile, proxyPort, proxyFilter, proxyUsage, proxyDebug, proxyError }) {
   const { t } = useI18n();
 
   // 1번째 줄: 앱 정보 + 언어
@@ -95,6 +95,13 @@ export default function StatusBar({ activeProfile, view, mode, message, lang, pr
       ? colors.danger
       : colors.info;
     line2.push(e(Text, { color: msgColor }, message.text));
+  } else if (proxyError) {
+    if (line2.length > 0) line2.push(e(Text, { color: colors.muted }, " │ "));
+    line2.push(e(Text, { color: colors.danger, bold: true }, proxyError.message || ""));
+    if (proxyError.pids && proxyError.pids.length > 0) {
+      line2.push(e(Text, { color: colors.muted }, " "));
+      line2.push(e(Text, { color: colors.warning }, `[K] ${t("portKill")}`));
+    }
   }
 
   return e(

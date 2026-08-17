@@ -8,7 +8,7 @@ import chalk from "chalk";
 
 const require = createRequire(import.meta.url);
 const manager = require("../src/manager.cjs");
-const { ProxyServer } = require("../src/proxy/server.cjs");
+const { ProxyServer, findPidOnPort, getProcessName, killPids } = require("../src/proxy/server.cjs");
 const App = (await import("../src/tui/App.mjs")).default;
 
 function mask(value) {
@@ -236,6 +236,7 @@ program
   .option("-p, --port <port>", "프록시 서버 포트", "3456")
   .option("-m, --model <model>", "OpenAI API 모델 오버라이드")
   .option("-d, --debug", "디버그 로그 출력 (요청/응답 상태)")
+  .option("-f, --force", "포트가 점유 중이면 점유 프로세스를 종료하고 시작")
   .action(async (name, opts) => {
     try {
       const profile = manager.getProfile(name);
@@ -255,17 +256,59 @@ program
       }
 
       const port = parseInt(opts.port, 10);
-      const server = new ProxyServer({
-        port,
-        targetUrl: baseUrl,
-        apiKey,
-        model,
-        profileName: name,
-        manager,
-        debug: !!opts.debug,
-      });
+      if (!Number.isFinite(port) || port < 1 || port > 65535) {
+        console.log(chalk.red(`오류: 잘못된 포트입니다: ${opts.port}`));
+        return;
+      }
 
-      await server.start();
+      const makeServer = () =>
+        new ProxyServer({
+          port,
+          targetUrl: baseUrl,
+          apiKey,
+          model,
+          profileName: name,
+          manager,
+          debug: !!opts.debug,
+        });
+
+      let server;
+      try {
+        server = makeServer();
+        await server.start();
+      } catch (err) {
+        if (err.code === "EADDRINUSE") {
+          // 점유 프로세스 정보 확인
+          let detail = "";
+          let pids = [];
+          try {
+            pids = await findPidOnPort(port);
+            const names = [];
+            for (const pid of pids) {
+              const pname = await getProcessName(pid);
+              names.push(pname ? `${pname} (PID ${pid})` : `PID ${pid}`);
+            }
+            if (names.length > 0) detail = ` — 점유 중: ${names.join(", ")}`;
+          } catch {}
+
+          if (opts.force && pids.length > 0) {
+            console.log(chalk.yellow(`포트 ${port} 점유 프로세스 종료: PID ${pids.join(", ")}`));
+            killPids(pids);
+            await new Promise((r) => setTimeout(r, 300));
+            server = makeServer();
+            await server.start();
+          } else {
+            console.log(chalk.red(`오류: 포트 ${port}이(가) 이미 사용 중입니다.${detail}`));
+            console.log();
+            console.log(chalk.dim(`  다른 포트로 실행:           cam proxy ${name} --port <새 포트>`));
+            console.log(chalk.dim(`  점유 프로세스 종료 후 시작:   cam proxy ${name} --force`));
+            return;
+          }
+        } else {
+          console.log(chalk.red(`오류: ${err.message}`));
+          return;
+        }
+      }
 
       console.log(chalk.green(`\n✓ 프록시 시작됨`));
       console.log(chalk.dim(`  프로필: ${name}`));
@@ -298,7 +341,7 @@ program
 
 if (process.argv.length === 2) {
   // TUI 시작 전: 이전 실행에서 프록시가 급작 종료되어 남은 설정 백업이 있으면 복원
-  ProxyServer.restoreFromDisk(manager);
+  await ProxyServer.restoreFromDisk(manager);
   const app = React.createElement(App);
   const { waitUntilExit } = render(app);
   try {
@@ -309,6 +352,6 @@ if (process.argv.length === 2) {
   }
 } else {
   // CLI 명령 전에도 동일하게 복원 (proxy 명령 포함)
-  ProxyServer.restoreFromDisk(manager);
+  await ProxyServer.restoreFromDisk(manager);
   program.parse();
 }
