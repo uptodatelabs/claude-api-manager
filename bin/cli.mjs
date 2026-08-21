@@ -270,6 +270,10 @@ program
         return;
       }
 
+      const classifierTargetUrl = env.CAM_CLASSIFIER_BASE_URL || "";
+      const classifierApiKey = env.CAM_CLASSIFIER_API_KEY || "";
+      const classifierModel = env.CAM_CLASSIFIER_MODEL || "";
+
       const makeServer = () =>
         new ProxyServer({
           port,
@@ -280,6 +284,9 @@ program
           manager,
           debug: !!opts.debug,
           rateLimit,
+          classifierTargetUrl,
+          classifierApiKey,
+          classifierModel,
         });
 
       let server;

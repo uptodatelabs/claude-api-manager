@@ -108,6 +108,10 @@ class ProxyServer {
     this.targetUrl = options.targetUrl || "";
     this.apiKey = options.apiKey || "";
     this.model = options.model || "";
+    // 분류기 전용 공급자 (미설정 시 메인 공급자와 동일)
+    this.classifierTargetUrl = options.classifierTargetUrl || "";
+    this.classifierApiKey = options.classifierApiKey || "";
+    this.classifierModel = options.classifierModel || "";
     this.profileName = options.profileName || "";
     this.manager = options.manager || null;
     this.server = null;
@@ -497,13 +501,21 @@ class ProxyServer {
 
   // Claude Code 자동 승인 분류기 요청 감지:
   // auto 모드에서 안전성 판단용으로 claude-sonnet-*[1m], muse-spark-*[1m] 같은
-  // 분류기 모델을 호출하는데, upstream이 이 모델을 모르면 실패하므로 프로필 모델로 치환
-  isClassifierRequest(model) {
-    if (!model || !this.model) return false;
+  // 분류기 모델을 호출하는데, upstream이 이 모델을 모르면 실패하므로 프로필 모델로 치환.
+  // 분류기 전용 공급자가 설정된 경우, 메인 모델과 동일해도 작은 요청은 분류기로 간주해 전용 공급자로 라우팅.
+  isClassifierRequest(model, body) {
+    if (!model) return false;
     const m = String(model).toLowerCase();
-    // 프로필 모델과 다르고 분류기 계열이면 분류기 요청으로 간주
-    if (m === String(this.model).toLowerCase()) return false;
-    return m.includes("sonnet") || m.includes("haiku") || m.includes("spark");
+    const isClassifierModel = m.includes("sonnet") || m.includes("haiku") || m.includes("spark");
+    if (!isClassifierModel) return false;
+    if (this.model && m === String(this.model).toLowerCase()) {
+      // 메인 모델과 동일: 분류기 전용 공급자가 있고, 작은 요청일 때만 분류기로 간주
+      if (!this.classifierTargetUrl) return false;
+      const msgCount = body && Array.isArray(body.messages) ? body.messages.length : 0;
+      // stream=false + messages<=5 인 sync 분류기 요청을 별도 라우팅
+      if (msgCount > 5) return false;
+    }
+    return true;
   }
 
   async handleMessages(body, req, res) {
@@ -514,18 +526,30 @@ class ProxyServer {
     const rlDelay = Date.now() - t0;
     this.log(`[req ${seq}] rate-limit: delay=${rlDelay}ms, limit=${Number.isFinite(this.lastEffectiveLimit) ? this.lastEffectiveLimit + "/min" : "unlimited"}, window=${this.requestTimestamps.length}, model=${body.model || "?"}`);
 
-    // 분류기 요청이면 프로필 모델로 치환
-    if (this.isClassifierRequest(body.model)) {
-      body.model = this.model;
+    // 분류기 요청 처리: 전용 공급자가 설정되면 그쪽으로 라우팅, 아니면 메인 모델로 치환
+    const isClassifier = this.isClassifierRequest(body.model, body);
+    let effectiveTargetUrl = this.targetUrl;
+    let effectiveApiKey = this.apiKey;
+    let effectiveModel = this.model;
+    if (isClassifier) {
+      if (this.classifierTargetUrl) {
+        effectiveTargetUrl = this.classifierTargetUrl;
+        effectiveApiKey = this.classifierApiKey || this.apiKey;
+        effectiveModel = this.classifierModel || this.model;
+        this.log(`[req ${seq}] classifier -> ${effectiveTargetUrl} model=${effectiveModel}`);
+        body.model = effectiveModel;
+      } else {
+        body.model = this.model;
+      }
     }
 
     // Anthropic → OpenAI 변환 (proxy의 유일한 목적)
     const openaiRequest = anthropicToOpenAI(body);
-    if (this.model) {
-      openaiRequest.model = this.model;
+    if (effectiveModel) {
+      openaiRequest.model = effectiveModel;
     }
 
-    const base = this.targetUrl.replace(/\/+$/, "");
+    const base = effectiveTargetUrl.replace(/\/+$/, "");
     const apiBase = base.endsWith("/v1") ? base : base + "/v1";
     const targetUrl = new URL(apiBase + "/chat/completions");
     const isStream = openaiRequest.stream;
@@ -535,7 +559,7 @@ class ProxyServer {
 
     const headers = {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${this.apiKey}`,
+      Authorization: `Bearer ${effectiveApiKey}`,
     };
 
     const options = {

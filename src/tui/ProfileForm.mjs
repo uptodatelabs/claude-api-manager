@@ -46,6 +46,9 @@ export const KNOWN_ENV_KEYS = [
   "ANTHROPIC_AWS_API_KEY",
   "ANTHROPIC_AWS_BASE_URL",
   "CAM_RATE_LIMIT",
+  "CAM_CLASSIFIER_BASE_URL",
+  "CAM_CLASSIFIER_API_KEY",
+  "CAM_CLASSIFIER_MODEL",
 ];
 
 // 각 스텝의 입력 필드 정의 (순차 입력, 라벨은 i18n 키)
@@ -69,6 +72,11 @@ const STEP_FIELDS = {
     { name: "CAM_RATE_LIMIT", labelKey: "rateLimit", placeholderKey: "rateLimitPlaceholder" },
     { name: "description", labelKey: "descLabel", placeholderKey: "descPlaceholder" },
     { name: "tags", labelKey: "tagsLabel", placeholderKey: "tags" },
+  ],
+  classifier: [
+    { name: "CAM_CLASSIFIER_BASE_URL", labelKey: "classifierBaseUrl", placeholderKey: "classifierBaseUrlPlaceholder" },
+    { name: "CAM_CLASSIFIER_API_KEY", labelKey: "classifierApiKey", placeholderKey: "classifierApiKeyPlaceholder" },
+    { name: "CAM_CLASSIFIER_MODEL", labelKey: "classifierModel", placeholderKey: "classifierModelPlaceholder" },
   ],
 };
 
@@ -331,6 +339,35 @@ export function FormStep({ step, formData, setFormData, onNext, onPrev, onCancel
     );
   } else if (step === "meta") {
     title = t("metaStep");
+    body = e(
+      Box,
+      { flexDirection: "column" },
+      e(
+        Box,
+        { marginBottom: 1 },
+        e(Text, { color: colors.primary }, t(field.labelKey)),
+        formData[field.name] && isEdit
+          ? e(Text, { color: colors.danger }, t("deleteHint"))
+          : null
+      ),
+      e(TextInput, {
+        value: formData[field.name] || "",
+        onChange: (v) => set({ [field.name]: v }),
+        onSubmit: nextField,
+        placeholder: t(field.placeholderKey),
+      }),
+      e(
+        Box,
+        { marginTop: 1 },
+        e(
+          Text,
+          { color: colors.muted },
+          t("fieldIndicator", { cur: fieldIdx + 1, total: fields.length })
+        )
+      )
+    );
+  } else if (step === "classifier") {
+    title = t("classifierStep");
     body = e(
       Box,
       { flexDirection: "column" },

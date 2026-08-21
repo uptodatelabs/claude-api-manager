@@ -14,7 +14,7 @@ import { theme, detectProvider } from "./theme.mjs";
 import { KNOWN_ENV_KEYS } from "./ProfileForm.mjs";
 import { I18nContext, translate } from "./i18n.mjs";
 
-const STEPS = ["provider", "keys", "meta", "custom"];
+const STEPS = ["provider", "keys", "meta", "classifier", "custom"];
 
 const e = React.createElement;
 
@@ -84,6 +84,10 @@ export default function App() {
 
     // 레이트 리밋: 프로필 CAM_RATE_LIMIT ("auto"=적응형, 숫자=고정, 0/미설정=무제한)
     const rateLimit = env.CAM_RATE_LIMIT;
+    // 분류기 전용 공급자 (미설정 시 메인 공급자와 동일)
+    const classifierTargetUrl = env.CAM_CLASSIFIER_BASE_URL || "";
+    const classifierApiKey = env.CAM_CLASSIFIER_API_KEY || "";
+    const classifierModel = env.CAM_CLASSIFIER_MODEL || "";
 
     if (!baseUrl) {
       setProxyError(t("proxyNoBaseUrl"));
@@ -99,6 +103,9 @@ export default function App() {
         profileName,
         manager,
         rateLimit,
+        classifierTargetUrl,
+        classifierApiKey,
+        classifierModel,
       });
 
       await server.start();
@@ -728,7 +735,7 @@ export default function App() {
   const isEdit = !!editingProfile;
   const formStepName = (() => {
     const steps = formData.provider === "proxy"
-      ? ["provider", "proxy_template", "proxy_keys", "meta", "custom"]
+      ? ["provider", "proxy_template", "proxy_keys", "meta", "classifier", "custom"]
       : STEPS;
     return steps[formStepIdx];
   })();
@@ -736,7 +743,7 @@ export default function App() {
   const goFormNext = () => {
     const stepsForCheck =
       formData.provider === "proxy"
-        ? ["provider", "proxy_template", "proxy_keys", "meta", "custom"]
+        ? ["provider", "proxy_template", "proxy_keys", "meta", "classifier", "custom"]
         : STEPS;
     if (formStepIdx === stepsForCheck.length - 1) {
       try {
