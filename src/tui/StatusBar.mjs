@@ -17,7 +17,7 @@ function formatTokens(n) {
   return String(n);
 }
 
-export default function StatusBar({ activeProfile, view, mode, message, lang, proxyRunning, proxyProfile, proxyPort, proxyFilter, proxyUsage, proxyDebug, proxyError }) {
+export default function StatusBar({ activeProfile, view, mode, message, lang, proxyRunning, proxyProfile, proxyPort, proxyFilter, proxyUsage, proxyRateLimit, proxyDebug, proxyError }) {
   const { t } = useI18n();
 
   // 1번째 줄: 앱 정보 + 언어
@@ -76,6 +76,26 @@ export default function StatusBar({ activeProfile, view, mode, message, lang, pr
         e(Text, { color: colors.info }, `out ${formatTokens(proxyUsage.outputTokens)}`),
         e(Text, { color: colors.muted }, " / "),
         e(Text, { color: colors.info }, `req ${proxyUsage.requests}`)
+      );
+    }
+    if (proxyRunning && proxyRateLimit) {
+      const rl = proxyRateLimit;
+      let rlText;
+      let rlColor = colors.muted;
+      if (rl.mode === "off") {
+        rlText = "RL off";
+      } else if (rl.mode === "static") {
+        rlText = `RL ${rl.limit}/min`;
+        rlColor = colors.info;
+      } else {
+        // auto
+        const eff = rl.limit === null ? "∞" : `${rl.limit}/min`;
+        rlText = `RL auto ${eff} (${rl.window} in 60s)`;
+        rlColor = rl.limit !== null && rl.window >= rl.limit ? colors.warning : colors.info;
+      }
+      line2.push(
+        e(Text, { color: colors.muted }, " │ "),
+        e(Text, { color: rlColor }, rlText)
       );
     }
   }

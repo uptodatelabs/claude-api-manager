@@ -53,6 +53,7 @@ export default function App() {
   const [proxyDebug, setProxyDebug] = useState(false);
   const [proxyDebugLogs, setProxyDebugLogs] = useState([]);
   const [debugScroll, setDebugScroll] = useState(0);
+  const [proxyRateLimit, setProxyRateLimit] = useState(null);
   const [proxyFilter, setProxyFilter] = useState(false);
   const [lang, setLang] = useState("en");
 
@@ -211,7 +212,7 @@ export default function App() {
     })();
   }, []);
 
-  // 프록시 토큰 사용량 주기 갱신 (1초) — 값 변경 시에만 업데이트 (깜빡임 방지)
+  // 프록시 토큰 사용량 + 레이트 리밋 상태 주기 갱신 (1초) — 값 변경 시에만 업데이트 (깜빡임 방지)
   useEffect(() => {
     const timer = setInterval(() => {
       if (proxyRef.current && proxyRef.current.running) {
@@ -224,6 +225,20 @@ export default function App() {
             ? prev
             : { ...u }
         );
+        if (typeof proxyRef.current.getRateLimitInfo === "function") {
+          const rl = proxyRef.current.getRateLimitInfo();
+          setProxyRateLimit((prev) =>
+            prev &&
+            prev.mode === rl.mode &&
+            prev.limit === rl.limit &&
+            prev.window === rl.window &&
+            prev.adaptive === rl.adaptive
+              ? prev
+              : rl
+          );
+        }
+      } else {
+        setProxyRateLimit(null);
       }
     }, 1000);
     return () => clearInterval(timer);
@@ -766,6 +781,7 @@ export default function App() {
         proxyPort,
         proxyFilter,
         proxyUsage,
+        proxyRateLimit,
         proxyDebug,
         proxyError,
       }),
@@ -811,6 +827,7 @@ export default function App() {
             proxyDebug,
             proxyDebugLogs,
             debugScroll,
+            proxyRateLimit,
             settingsEditIndex,
             settingsEditKey,
             settingsEditValue,

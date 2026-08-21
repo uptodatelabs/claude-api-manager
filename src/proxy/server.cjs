@@ -201,6 +201,25 @@ class ProxyServer {
     }
   }
 
+  // TUI/디버그에서 현재 레이트 리밋 상태를 표시하기 위한 스냅샷
+  getRateLimitInfo() {
+    const effective =
+      this.rateMode === "off"
+        ? null
+        : this.rateMode === "auto"
+          ? Number.isFinite(this.adaptiveLimit)
+            ? Math.min(this.rateCeiling, this.adaptiveLimit)
+            : null
+          : this.rateLimit;
+    return {
+      mode: this.rateMode, // off | static | auto
+      limit: effective, // 현재 유효 한도 (null=무제한), 분당
+      ceiling: this.rateCeiling,
+      adaptive: this.adaptiveLimit, // auto 모드 내부값 (Infinity 가능)
+      window: this.requestTimestamps.length,
+    };
+  }
+
   // upstream 응답 상태에 따라 적응형 한도 조절 (auto 모드 전용, sync/stream 양쪽에서 호출)
   noteUpstreamStatus(statusCode) {
     if (this.rateMode !== "auto") return;

@@ -45,6 +45,7 @@ export default function MainPanel({
   proxyDebug,
   proxyDebugLogs,
   debugScroll,
+  proxyRateLimit,
 }) {
   // 포커스 시 borderColor: cyan, 비포커스 시 gray
   const activeBorder = focus ? "cyan" : "gray";
@@ -372,6 +373,23 @@ export default function MainPanel({
                   { marginBottom: 1, flexShrink: 0 },
                   e(Text, { color: colors.warning, bold: true }, "[D] " + t("debugTitle")),
                   e(Text, { color: colors.muted }, "  (" + t("debugFile") + ": ~/.claude-api-manager/proxy-debug.log)"),
+                  (() => {
+                    if (!proxyRateLimit) return null;
+                    const rl = proxyRateLimit;
+                    let rlLabel;
+                    if (rl.mode === "off") rlLabel = "RL off";
+                    else if (rl.mode === "static") rlLabel = `RL ${rl.limit}/min`;
+                    else {
+                      const eff = rl.limit === null ? "∞" : `${rl.limit}/min`;
+                      rlLabel = `RL auto ${eff}`;
+                    }
+                    return e(
+                      Box,
+                      { marginLeft: 2, flexShrink: 0 },
+                      e(Text, { color: colors.info }, ` │ ${rlLabel}`),
+                      e(Text, { color: colors.muted }, ` (${rl.window} in 60s)`)
+                    );
+                  })(),
                   e(Text, { color: colors.muted }, "  [PgUp/PgDn " + t("scroll") + "]")
                 ),
                 proxyDebugLogs.length === 0
