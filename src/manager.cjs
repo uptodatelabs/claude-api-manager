@@ -71,6 +71,20 @@ function readSettings() {
 }
 
 function writeSettings(settings) {
+  // CAM_ 접두사 키는 claude-api-manager 전용 설정이므로 Claude Code용
+  // settings.json에는 기록하지 않음 (apis.json 프로필 env에만 보관됨)
+  if (settings && settings.env && typeof settings.env === "object") {
+    let stripped = false;
+    const cleaned = {};
+    for (const [k, v] of Object.entries(settings.env)) {
+      if (k.startsWith("CAM_")) {
+        stripped = true;
+        continue;
+      }
+      cleaned[k] = v;
+    }
+    if (stripped) settings = { ...settings, env: cleaned };
+  }
   const settingsPath = getSettingsPath();
   const dir = path.dirname(settingsPath);
   if (!fs.existsSync(dir)) {
