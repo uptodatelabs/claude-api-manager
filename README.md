@@ -170,6 +170,16 @@ cam proxy <profile-name> --rate-limit auto # Adaptive: start unlimited, back off
 
 적응형 모드의 모든 조절 과정은 `~/.claude-api-manager/proxy-debug.log`에 `RATE LIMIT AUTO:` 로그로 기록됩니다.
 
+**분류기 전용 공급자:** Claude Code auto 모드의 안전 분류기(sonnet/haiku/spark 계열 모델 호출)를 메인 공급자가 처리하지 못하는 경우(예: 업스트림이 분류기 패킷에 400을 반환해 Edit이 차단될 때), 프로필 env로 분류기 요청만 별도 공급자/모델로 라우팅할 수 있습니다.
+
+| env 키 | 설명 |
+|---|---|
+| `CAM_CLASSIFIER_BASE_URL` | 분류기 전용 API URL (미설정 시 메인 공급자 사용) |
+| `CAM_CLASSIFIER_API_KEY` | 분류기 전용 API 키 (미설정 시 메인 키 사용) |
+| `CAM_CLASSIFIER_MODEL` | 분류기 전용 모델 (미설정 시 메인 모델 사용) |
+
+셋 중 하나라도 설정되면 분류기성 요청(작은 sync 패킷)은 해당 설정으로 라우팅됩니다. 예: URL/키는 메인 공급자 그대로 두고 모델만 교체(`CAM_CLASSIFIER_MODEL=다른-모델`)도 가능합니다. 라우팅 시 `~/.claude-api-manager/proxy-debug.log`에 `classifier -> <url> model=<model>` 로 기록됩니다. TUI 프로필 편집(`e`)의 "분류기 공급자" 단계에서도 설정할 수 있으며, `CAM_` 키이므로 settings.json에는 기록되지 않습니다.
+
 The proxy automatically:
 1. **Backs up** your current `settings.json` (the active profile's env)
 2. **Sets** `ANTHROPIC_BASE_URL=http://127.0.0.1:<port>` in `settings.json`
@@ -423,6 +433,16 @@ cam proxy <프로필-이름> --rate-limit auto # 적응형: 무제한 시작, 42
 | `auto` | **적응형(AIMD)** — 무제한으로 시작, 공급자가 429를 반환하면 한도 절반 축소(동시 다발은 5초 쿨다운으로 1회만, 최소 1/분), 90초간 안정화되면 20초마다 약 +10%씩 증가해 최적값을 학습 (상한 240/분) |
 
 적응형 모드의 모든 조절 과정은 `~/.claude-api-manager/proxy-debug.log`에 `RATE LIMIT AUTO:` 로그로 기록됩니다.
+
+**분류기 전용 공급자:** Claude Code auto 모드의 안전 분류기(sonnet/haiku/spark 계열 모델 호출)를 메인 공급자가 처리하지 못하는 경우(예: 업스트림이 분류기 패킷에 400을 반환해 Edit이 차단될 때), 프로필 env로 분류기 요청만 별도 공급자/모델로 라우팅할 수 있습니다.
+
+| env 키 | 설명 |
+|---|---|
+| `CAM_CLASSIFIER_BASE_URL` | 분류기 전용 API URL (미설정 시 메인 공급자 사용) |
+| `CAM_CLASSIFIER_API_KEY` | 분류기 전용 API 키 (미설정 시 메인 키 사용) |
+| `CAM_CLASSIFIER_MODEL` | 분류기 전용 모델 (미설정 시 메인 모델 사용) |
+
+셋 중 하나라도 설정되면 분류기성 요청(작은 sync 패킷)은 해당 설정으로 라우팅됩니다. 예: URL/키는 메인 공급자 그대로 두고 모델만 교체(`CAM_CLASSIFIER_MODEL=다른-모델`)도 가능합니다. 라우팅 시 `~/.claude-api-manager/proxy-debug.log`에 `classifier -> <url> model=<model>` 로 기록됩니다. TUI 프로필 편집(`e`)의 "분류기 공급자" 단계에서도 설정할 수 있으며, `CAM_` 키이므로 settings.json에는 기록되지 않습니다.
 
 프록시가 자동으로 수행하는 작업:
 1. 현재 `settings.json` **백업** (활성 프로필 env 기준)
