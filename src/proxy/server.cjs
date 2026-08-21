@@ -509,8 +509,8 @@ class ProxyServer {
     const isClassifierModel = m.includes("sonnet") || m.includes("haiku") || m.includes("spark");
     if (!isClassifierModel) return false;
     if (this.model && m === String(this.model).toLowerCase()) {
-      // 메인 모델과 동일: 분류기 전용 공급자가 있고, 작은 요청일 때만 분류기로 간주
-      if (!this.classifierTargetUrl) return false;
+      // 메인 모델과 동일: 분류기 전용 설정(모델 또는 URL)이 있고, 작은 요청일 때만 분류기로 간주
+      if (!this.classifierTargetUrl && !this.classifierModel) return false;
       const msgCount = body && Array.isArray(body.messages) ? body.messages.length : 0;
       // stream=false + messages<=5 인 sync 분류기 요청을 별도 라우팅
       if (msgCount > 5) return false;
@@ -532,8 +532,9 @@ class ProxyServer {
     let effectiveApiKey = this.apiKey;
     let effectiveModel = this.model;
     if (isClassifier) {
-      if (this.classifierTargetUrl) {
-        effectiveTargetUrl = this.classifierTargetUrl;
+      const hasClassifierOverride = this.classifierTargetUrl || this.classifierModel || this.classifierApiKey;
+      if (hasClassifierOverride) {
+        effectiveTargetUrl = this.classifierTargetUrl || this.targetUrl;
         effectiveApiKey = this.classifierApiKey || this.apiKey;
         effectiveModel = this.classifierModel || this.model;
         this.log(`[req ${seq}] classifier -> ${effectiveTargetUrl} model=${effectiveModel}`);
