@@ -15,6 +15,16 @@ const BACKUP_FILE = path.join(os.homedir(), ".claude-api-manager", "proxy-settin
 const DEBUG_LOG_FILE = path.join(os.homedir(), ".claude-api-manager", "proxy-debug.log");
 const MAX_DEBUG_LOGS = 100;
 
+// 레이트 리밋 값 파싱: "auto"=적응형(AIMD), 양의 정수=고정 한도, 그 외(0/미설정)=무제한
+function parseRateLimit(raw) {
+  if (raw === null || raw === undefined) return { mode: "off", value: 0 };
+  const s = String(raw).trim().toLowerCase();
+  if (s === "auto") return { mode: "auto", value: 0 };
+  const n = parseInt(s, 10);
+  if (Number.isFinite(n) && n > 0) return { mode: "static", value: n };
+  return { mode: "off", value: 0 };
+}
+
 // 로컬 포트가 살아있는지 (프록시 실행 여부 판단용)
 function isPortOpen(port, host = "127.0.0.1", timeout = 300) {
   return new Promise((resolve) => {
@@ -104,8 +114,23 @@ class ProxyServer {
     this.running = false;
     this.settingsBackup = null;
     this.usage = { inputTokens: 0, outputTokens: 0, requests: 0 };
-    this.rateLimit = Number.isFinite(options.rateLimit) ? options.rateLimit : 0; // 분당 요청 수, 0=무제한
+    // 레이트 리밋 모드:
+    //   "off"    = 무제한 (0 또는 미설정)
+    //   "static" = 고정 한도 (숫자 N: 슬라이딩 윈도우 N/분)
+    //   "auto"   = AIMD 적응형 ("auto": 무제한 시작, 429 시 감속, 안정화 시 증속)
+    const rl = parseRateLimit(options.rateLimit);
+    this.rateMode = rl.mode;
+    this.rateLimit = rl.value; // static 모드의 고정 한도
+    this.rateCeiling = rl.mode === "auto" ? 240 : Infinity; // auto 모드 회복 상한
+    this.adaptiveLimit = Infinity; // auto 모드 현재 한도 (시작=무제한)
     this.requestTimestamps = []; // 슬라이딩 윈도우용 타임스탬프
+    this.lastEffectiveLimit = Infinity; // 마지막 throttle 판정에 쓴 한도 (로그용)
+    this.last429At = 0;
+    this.lastDecreaseAt = 0;
+    this.lastIncreaseAt = Date.now();
+    this.decreaseCooldownMs = Number.isFinite(options.decreaseCooldownMs) ? options.decreaseCooldownMs : 5000;
+    this.stableMs = Number.isFinite(options.stableMs) ? options.stableMs : 90000;
+    this.increaseIntervalMs = Number.isFinite(options.increaseIntervalMs) ? options.increaseIntervalMs : 20000;
     this.debug = !!options.debug;
     this.debugLogs = [];
     // 로그 파일 초기화 (시작 시 새로 시작)
@@ -137,27 +162,90 @@ class ProxyServer {
     this.usage.requests += 1;
   }
 
-  // 레이트 리밋 (슬라이딩 윈도우). 공급자가 429를 반환하지 않도록
-  // 분당 N회를 초과하면 공급자 전송 전까지 요청을 지연시킴 (Claude Code에는 429 미전송)
+  // 레이트 리밋 (슬라이딩 윈도우).
+  //   off    = 무제한
+  //   static = 고정 한도 N/분 초과 시 공급자 전송 전까지 지연
+  //   auto   = AIMD 적응형: 무제한 시작, upstream 429 시 절반씩 축소,
+  //            안정화되면 서서히 증가해 최적값을 찾음 (상한 240/분)
   async throttle() {
-    if (!this.rateLimit || this.rateLimit <= 0) {
-      this.log("RATE LIMIT: unlimited (rateLimit=0), no throttling");
+    if (this.rateMode === "off") {
+      this.log("RATE LIMIT: off (unlimited)");
       return;
     }
     const windowMs = 60000;
+    const tag = this.rateMode === "auto" ? "RATE LIMIT AUTO" : "RATE LIMIT";
     while (true) {
       const now = Date.now();
       this.requestTimestamps = this.requestTimestamps.filter((t) => now - t < windowMs);
-      this.log(`RATE LIMIT: window=${this.requestTimestamps.length}/${this.rateLimit} (in 60s)`);
-      if (this.requestTimestamps.length < this.rateLimit) {
+      const limit =
+        this.rateMode === "auto"
+          ? Number.isFinite(this.adaptiveLimit)
+            ? Math.min(this.rateCeiling, this.adaptiveLimit)
+            : Infinity
+          : this.rateLimit;
+      this.lastEffectiveLimit = limit;
+      if (!Number.isFinite(limit)) {
+        this.log(`${tag}: unlimited, window=${this.requestTimestamps.length}`);
+        this.requestTimestamps.push(Date.now());
+        return;
+      }
+      this.log(`${tag}: window=${this.requestTimestamps.length}/${limit} per min`);
+      if (this.requestTimestamps.length < limit) {
         this.requestTimestamps.push(Date.now());
         return;
       }
       const oldest = this.requestTimestamps[0];
       const waitMs = Math.max(0, oldest + windowMs - now) + 5;
-      this.log(`RATE LIMIT: THROTTLING ${waitMs}ms (${this.rateLimit}/min) before sending to upstream`);
+      this.log(`${tag}: THROTTLING ${waitMs}ms (${limit}/min) before sending to upstream`);
       await new Promise((r) => setTimeout(r, waitMs));
     }
+  }
+
+  // upstream 응답 상태에 따라 적응형 한도 조절 (auto 모드 전용, sync/stream 양쪽에서 호출)
+  noteUpstreamStatus(statusCode) {
+    if (this.rateMode !== "auto") return;
+    if (statusCode === 429) {
+      this.onRateLimited();
+    } else if (statusCode < 400) {
+      this.onSuccess();
+    }
+  }
+
+  // 429 수신: 곱셈 감소 (한도 절반). 동시 다발 429는 쿨다운으로 1회만 감축.
+  onRateLimited() {
+    const now = Date.now();
+    if (now - this.lastDecreaseAt < this.decreaseCooldownMs) {
+      this.log("RATE LIMIT AUTO: 429 received (decrease cooldown, skip)");
+      return;
+    }
+    this.lastDecreaseAt = now;
+    this.last429At = now;
+    this.lastIncreaseAt = now;
+    const prev = this.adaptiveLimit;
+    if (!Number.isFinite(prev)) {
+      // 무제한 학습 중 첫 429: 직전 1분 창의 절반에서 시작
+      const recent = Math.max(1, this.requestTimestamps.length);
+      this.adaptiveLimit = Math.max(1, Math.floor(recent / 2));
+    } else {
+      this.adaptiveLimit = Math.max(1, Math.floor(prev / 2));
+    }
+    this.log(`RATE LIMIT AUTO: 429 -> limit ${prev} -> ${this.adaptiveLimit}/min`);
+  }
+
+  // 성공 응답: 안정화 후 덧셈 증가 (+최대 10%/20초, ceiling까지)
+  onSuccess() {
+    if (!Number.isFinite(this.adaptiveLimit)) return;
+    if (this.adaptiveLimit >= this.rateCeiling) return;
+    const now = Date.now();
+    if (now - this.last429At < this.stableMs) return;
+    if (now - this.lastIncreaseAt < this.increaseIntervalMs) return;
+    const prev = this.adaptiveLimit;
+    const step = Math.max(1, Math.floor(prev * 0.1));
+    this.adaptiveLimit = Math.min(this.rateCeiling, prev + step);
+    this.lastIncreaseAt = now;
+    this.log(
+      `RATE LIMIT AUTO: stable ${Math.round((now - this.last429At) / 1000)}s -> limit ${prev} -> ${this.adaptiveLimit}/min`
+    );
   }
 
   start() {
@@ -405,7 +493,7 @@ class ProxyServer {
     const t0 = Date.now();
     await this.throttle();
     const rlDelay = Date.now() - t0;
-    this.log(`[req ${seq}] rate-limit: delay=${rlDelay}ms, window=${this.requestTimestamps.length}/${this.rateLimit || 0}, model=${body.model || "?"}`);
+    this.log(`[req ${seq}] rate-limit: delay=${rlDelay}ms, limit=${Number.isFinite(this.lastEffectiveLimit) ? this.lastEffectiveLimit + "/min" : "unlimited"}, window=${this.requestTimestamps.length}, model=${body.model || "?"}`);
 
     // 분류기 요청이면 프로필 모델로 치환
     if (this.isClassifierRequest(body.model)) {
@@ -451,6 +539,7 @@ class ProxyServer {
       const targetModule = options.port === 443 ? https : http;
       const proxyReq = targetModule.request(options, (proxyRes) => {
         this.log(`RES ${proxyRes.statusCode} (sync)`);
+        this.noteUpstreamStatus(proxyRes.statusCode);
         const chunks = [];
         proxyRes.on("data", (chunk) => chunks.push(chunk));
         proxyRes.on("end", () => {
@@ -537,6 +626,7 @@ class ProxyServer {
       const targetModule = options.port === 443 ? https : http;
       const proxyReq = targetModule.request(options, (proxyRes) => {
         this.log(`RES ${proxyRes.statusCode} (stream)`);
+        this.noteUpstreamStatus(proxyRes.statusCode);
         if (proxyRes.statusCode >= 400) {
           // upstream 에러 본문을 읽어 실제 에러 메시지를 SSE error 이벤트로 전달
           let errBody = "";
@@ -638,4 +728,4 @@ class ProxyServer {
   }
 }
 
-module.exports = { ProxyServer, findPidOnPort, getProcessName, killPids };
+module.exports = { ProxyServer, parseRateLimit, findPidOnPort, getProcessName, killPids };

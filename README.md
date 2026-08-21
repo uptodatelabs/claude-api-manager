@@ -155,12 +155,20 @@ cam proxy <profile-name>              # Start proxy on default port 3456
 cam proxy <profile-name> --port 5678  # Custom port
 cam proxy <profile-name> --debug      # Print request/response logs to terminal
 cam proxy <profile-name> --force      # Kill the process occupying the port and start
-cam proxy <profile-name> --rate-limit 10 # Max 10 requests per minute (0 = unlimited)
+cam proxy <profile-name> --rate-limit auto # Adaptive: start unlimited, back off on 429s
 ```
 
-If the port is already in use, the proxy shows a clear error (with the occupying process's PID) instead of silently moving to another port — this prevents background servers from accumulating. Use `--port` to pick another port or `--force` to terminate the occupying process.
+포트가 이미 사용 중이면 조용히 다른 포트로 이동하지 않고 점유 프로세스(PID 포함)를 안내하는 명확한 에러를 표시합니다 — 백그라운드 서버 누적을 방지합니다. `--port`로 다른 포트를 지정하거나 `--force`로 점유 프로세스를 종료하세요.
 
-**Rate limiting (prevent upstream 429s):** set `--rate-limit N` (requests per minute) or add `CAM_RATE_LIMIT=N` to a profile's env (per-profile, configured once in the TUI profile form). `0` means unlimited. The proxy delays outgoing requests so the upstream never receives more than N requests/minute — Claude Code is never sent a 429; it just waits.
+**레이트 리밋 (3가지 모드):** `--rate-limit` 또는 프로필 env의 `CAM_RATE_LIMIT`로 설정합니다.
+
+| 값 | 동작 |
+|---|---|
+| `0` 또는 미설정 | **무제한** — 아무 제한 없음 |
+| 숫자 `N` | **고정 한도** — 슬라이딩 윈도우로 분당 N회 초과 시 지연 (Claude Code에 429 없음) |
+| `auto` | **적응형(AIMD)** — 무제한으로 시작, 공급자가 429를 반환하면 한도 절반 축소(동시 다발은 5초 쿨다운으로 1회만, 최소 1/분), 90초간 안정화되면 20초마다 약 +10%씩 증가해 최적값을 학습 (상한 240/분) |
+
+적응형 모드의 모든 조절 과정은 `~/.claude-api-manager/proxy-debug.log`에 `RATE LIMIT AUTO:` 로그로 기록됩니다.
 
 The proxy automatically:
 1. **Backs up** your current `settings.json` (the active profile's env)
@@ -401,12 +409,20 @@ cam proxy <프로필-이름>              # 기본 포트 3456으로 프록시 �
 cam proxy <프로필-이름> --port 5678  # 커스텀 포트
 cam proxy <프로필-이름> --debug      # 요청/응답 로그를 터미널에 출력
 cam proxy <프로필-이름> --force      # 포트 점유 프로세스를 종료하고 시작
-cam proxy <프로필-이름> --rate-limit 10 # 분당 최대 10회 (0 = 무제한)
+cam proxy <프로필-이름> --rate-limit auto # 적응형: 무제한 시작, 429 시 자동 감속
 ```
 
 포트가 이미 사용 중이면 조용히 다른 포트로 이동하지 않고 점유 프로세스(PID 포함)를 안내하는 명확한 에러를 표시합니다 — 백그라운드 서버 누적을 방지합니다. `--port`로 다른 포트를 지정하거나 `--force`로 점유 프로세스를 종료하세요.
 
-**레이트 리밋 (공급자 429 방지):** `--rate-limit N`(분당 요청 수) 또는 프로필 env에 `CAM_RATE_LIMIT=N` 설정(프로필별, TUI 프로필 폼에서 지정). `0`은 무제한. proxy는 공급자로의 전송을 지연시켜 분당 N회를 초과하지 않게 합니다 — Claude Code에는 429를 보내지 않고 그냥 대기합니다.
+**레이트 리밋 (3가지 모드):** `--rate-limit` 또는 프로필 env의 `CAM_RATE_LIMIT`로 설정합니다.
+
+| 값 | 동작 |
+|---|---|
+| `0` 또는 미설정 | **무제한** — 아무 제한 없음 |
+| 숫자 `N` | **고정 한도** — 슬라이딩 윈도우로 분당 N회 초과 시 지연 (Claude Code에 429 없음) |
+| `auto` | **적응형(AIMD)** — 무제한으로 시작, 공급자가 429를 반환하면 한도 절반 축소(동시 다발은 5초 쿨다운으로 1회만, 최소 1/분), 90초간 안정화되면 20초마다 약 +10%씩 증가해 최적값을 학습 (상한 240/분) |
+
+적응형 모드의 모든 조절 과정은 `~/.claude-api-manager/proxy-debug.log`에 `RATE LIMIT AUTO:` 로그로 기록됩니다.
 
 프록시가 자동으로 수행하는 작업:
 1. 현재 `settings.json` **백업** (활성 프로필 env 기준)

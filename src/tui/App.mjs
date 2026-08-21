@@ -77,9 +77,8 @@ export default function App() {
     const apiKey = env.ANTHROPIC_API_KEY || env.ANTHROPIC_AUTH_TOKEN || env.OPENAI_API_KEY || "";
     const model = env.ANTHROPIC_MODEL || "";
 
-    // 레이트 리밋: 프로필 CAM_RATE_LIMIT (0=무제한)
-    const envRl = parseInt(env.CAM_RATE_LIMIT, 10);
-    const rateLimit = Number.isFinite(envRl) ? envRl : 0;
+    // 레이트 리밋: 프로필 CAM_RATE_LIMIT ("auto"=적응형, 숫자=고정, 0/미설정=무제한)
+    const rateLimit = env.CAM_RATE_LIMIT;
 
     if (!baseUrl) {
       setProxyError(t("proxyNoBaseUrl"));
