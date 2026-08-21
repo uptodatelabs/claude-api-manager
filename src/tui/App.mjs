@@ -39,6 +39,9 @@ export default function App() {
   const [renameValue, setRenameValue] = useState("");
   const [settingsContent, setSettingsContent] = useState(null);
   const [pathValue, setPathValue] = useState("");
+  const [exportPath, setExportPath] = useState("./claude-api-manager-export.json");
+  const [importPath, setImportPath] = useState("./claude-api-manager-export.json");
+  const [captureName, setCaptureName] = useState("");
   const [settingsEditIndex, setSettingsEditIndex] = useState(0);
   const [settingsEditKey, setSettingsEditKey] = useState("");
   const [settingsEditValue, setSettingsEditValue] = useState("");
@@ -429,13 +432,32 @@ export default function App() {
       return;
     }
 
-    // 폼/프롬프트 뷰에서는 입력 무시
-    if (
-      s.view === "form" ||
-      s.view === "capture-prompt" ||
-      s.view === "import-prompt" ||
-      s.view === "export-prompt"
-    ) {
+    // export 프롬프트 — 입력은 MainPanel TextInput에서 처리, Esc로만 닫기
+    if (s.view === "export-prompt") {
+      if (key.escape) {
+        setView("detail");
+      }
+      return;
+    }
+
+    // import 프롬프트
+    if (s.view === "import-prompt") {
+      if (key.escape) {
+        setView("detail");
+      }
+      return;
+    }
+
+    // capture 프롬프트
+    if (s.view === "capture-prompt") {
+      if (key.escape) {
+        setView("detail");
+      }
+      return;
+    }
+
+    // 폼 뷰에서는 입력 무시
+    if (s.view === "form") {
       return;
     }
 
@@ -643,14 +665,17 @@ export default function App() {
       return;
     }
     if (input === "c") {
+      setCaptureName(`capture-${Date.now()}`);
       setView("capture-prompt");
       return;
     }
     if (input === "i") {
+      setImportPath("./claude-api-manager-export.json");
       setView("import-prompt");
       return;
     }
     if (input === "x") {
+      setExportPath("./claude-api-manager-export.json");
       setView("export-prompt");
       return;
     }
@@ -861,6 +886,53 @@ export default function App() {
               setSettingsEditMode(null);
               setSettingsEditStep("value");
               setView("settings-edit");
+            },
+            exportPath,
+            onExportChange: (v) => setExportPath(v),
+            onExportSubmit: () => {
+              try {
+                const p = manager.exportProfiles(exportPath.trim() || "./claude-api-manager-export.json");
+                flash(t("successExported", { path: p }), "success");
+              } catch (err) {
+                flash(t("errorMsg", { msg: err.message }), "danger");
+              }
+              setView("detail");
+            },
+            importPath,
+            onImportChange: (v) => setImportPath(v),
+            onImportSubmit: () => {
+              try {
+                const res = manager.importProfiles(importPath.trim() || "./claude-api-manager-export.json");
+                const msg = res.imported.length
+                  ? t("successImported", { names: res.imported.join(", ") })
+                  : t("successImportedNone");
+                if (res.skipped.length) {
+                  flash(msg + " " + t("skippedProfiles", { names: res.skipped.join(", ") }), "info");
+                } else {
+                  flash(msg, "success");
+                }
+                reload();
+              } catch (err) {
+                flash(t("errorMsg", { msg: err.message }), "danger");
+              }
+              setView("detail");
+            },
+            captureName,
+            onCaptureChange: (v) => setCaptureName(v),
+            onCaptureSubmit: () => {
+              const name = captureName.trim();
+              if (!name) {
+                flash(t("errorMsg", { msg: "Profile name required" }), "danger");
+                return;
+              }
+              try {
+                manager.captureProfile(name);
+                flash(t("successCaptured", { name }), "success");
+                reload();
+              } catch (err) {
+                flash(t("errorMsg", { msg: err.message }), "danger");
+              }
+              setView("detail");
             },
             onRenameChange: (v) => setRenameValue(v),
             onRenameSubmit: () => {

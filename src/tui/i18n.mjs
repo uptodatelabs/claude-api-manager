@@ -142,6 +142,11 @@ export const translations = {
     successAdded: '✓ "{name}" added',
     successRenamed: '✓ "{old}" → "{new}"',
     successPath: "✓ Path changed: {path}",
+    successExported: '✓ Exported to {path}',
+    successImported: '✓ Imported: {names}',
+    successImportedNone: '✓ Nothing imported',
+    skippedProfiles: '(skipped: {names})',
+    successCaptured: '✓ Captured as "{name}"',
     errorMsg: "✗ {msg}",
   },
   ko: {
@@ -272,6 +277,11 @@ export const translations = {
     successAdded: '✓ "{name}" 추가됨',
     successRenamed: '✓ "{old}" → "{new}"',
     successPath: "✓ 경로 변경됨: {path}",
+    successExported: '✓ 내보냄: {path}',
+    successImported: '✓ 가져옴: {names}',
+    successImportedNone: '✓ 가져올 항목 없음',
+    skippedProfiles: '(건너뜀: {names})',
+    successCaptured: '✓ 캡처됨: "{name}"',
     errorMsg: "✗ {msg}",
   },
 };

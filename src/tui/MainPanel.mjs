@@ -33,6 +33,15 @@ export default function MainPanel({
   pathValue,
   onPathChange,
   onPathSubmit,
+  exportPath,
+  onExportChange,
+  onExportSubmit,
+  importPath,
+  onImportChange,
+  onImportSubmit,
+  captureName,
+  onCaptureChange,
+  onCaptureSubmit,
   activeProfileName,
   settingsEditIndex,
   settingsEditKey,
@@ -47,9 +56,62 @@ export default function MainPanel({
   debugScroll,
   proxyRateLimit,
 }) {
-  // 포커스 시 borderColor: cyan, 비포커스 시 gray
+    // 포커스 시 borderColor: cyan, 비포커스 시 gray
   const activeBorder = focus ? "cyan" : "gray";
   const { t } = useI18n();
+
+  // export / import / capture 프롬프트 — path-prompt와 동일한 레이아웃
+  if (view === "export-prompt") {
+    return e(
+      Box,
+      {
+        flexDirection: "column",
+        borderStyle: "round",
+        borderColor: activeBorder,
+        paddingX: 2,
+        paddingY: 2,
+        flexGrow: 1,
+      },
+      e(Box, { marginBottom: 1 }, e(Text, { color: colors.primary, bold: true }, t("export"))),
+      e(Box, { marginBottom: 1 }, e(Text, { color: colors.muted }, t("export") + " file path")),
+      e(TextInput, { value: exportPath, onChange: onExportChange, onSubmit: onExportSubmit, placeholder: "./claude-api-manager-export.json" }),
+      e(Box, { marginTop: 1 }, e(Text, { color: colors.muted }, t("saveConfirm") + "  [esc] " + t("back")))
+    );
+  }
+  if (view === "import-prompt") {
+    return e(
+      Box,
+      {
+        flexDirection: "column",
+        borderStyle: "round",
+        borderColor: activeBorder,
+        paddingX: 2,
+        paddingY: 2,
+        flexGrow: 1,
+      },
+      e(Box, { marginBottom: 1 }, e(Text, { color: colors.primary, bold: true }, t("import"))),
+      e(Box, { marginBottom: 1 }, e(Text, { color: colors.muted }, t("import") + " file path")),
+      e(TextInput, { value: importPath, onChange: onImportChange, onSubmit: onImportSubmit, placeholder: "./claude-api-manager-export.json" }),
+      e(Box, { marginTop: 1 }, e(Text, { color: colors.muted }, t("saveConfirm") + "  [esc] " + t("back")))
+    );
+  }
+  if (view === "capture-prompt") {
+    return e(
+      Box,
+      {
+        flexDirection: "column",
+        borderStyle: "round",
+        borderColor: activeBorder,
+        paddingX: 2,
+        paddingY: 2,
+        flexGrow: 1,
+      },
+      e(Box, { marginBottom: 1 }, e(Text, { color: colors.primary, bold: true }, t("capture"))),
+      e(Box, { marginBottom: 1 }, e(Text, { color: colors.muted }, "profile name")),
+      e(TextInput, { value: captureName, onChange: onCaptureChange, onSubmit: onCaptureSubmit, placeholder: "my-profile" }),
+      e(Box, { marginTop: 1 }, e(Text, { color: colors.muted }, t("saveConfirm") + "  [esc] " + t("back")))
+    );
+  }
 
   const mainContent = (() => {
     // 경로 변경 프롬프트
