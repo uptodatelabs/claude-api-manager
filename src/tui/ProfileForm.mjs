@@ -45,6 +45,7 @@ export const KNOWN_ENV_KEYS = [
   "ANTHROPIC_AWS_WORKSPACE_ID",
   "ANTHROPIC_AWS_API_KEY",
   "ANTHROPIC_AWS_BASE_URL",
+  "CAM_RATE_LIMIT",
 ];
 
 // 각 스텝의 입력 필드 정의 (순차 입력, 라벨은 i18n 키)
@@ -64,6 +65,7 @@ const STEP_FIELDS = {
     { name: "ANTHROPIC_MODEL", labelKey: "ANTHROPIC_MODEL", placeholderKey: "ANTHROPIC_MODEL" },
     { name: "model", labelKey: "modelLabel", placeholderKey: "modelLabel" },
     { name: "fallbackModel", labelKey: "fallbackLabel", placeholderKey: "fallbackModel" },
+    { name: "CAM_RATE_LIMIT", labelKey: "rateLimit", placeholderKey: "rateLimitPlaceholder" },
     { name: "description", labelKey: "descLabel", placeholderKey: "descPlaceholder" },
     { name: "tags", labelKey: "tagsLabel", placeholderKey: "tags" },
   ],

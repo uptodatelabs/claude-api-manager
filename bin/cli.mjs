@@ -237,6 +237,7 @@ program
   .option("-m, --model <model>", "OpenAI API 모델 오버라이드")
   .option("-d, --debug", "디버그 로그 출력 (요청/응답 상태)")
   .option("-f, --force", "포트가 점유 중이면 점유 프로세스를 종료하고 시작")
+  .option("-r, --rate-limit <n>", "분당 최대 요청 수 (0=무제한). 프로필 CAM_RATE_LIMIT보다 우선")
   .action(async (name, opts) => {
     try {
       const profile = manager.getProfile(name);
@@ -249,6 +250,15 @@ program
       const baseUrl = env.ANTHROPIC_BASE_URL || env.OPENAI_BASE_URL || "";
       const apiKey = env.ANTHROPIC_API_KEY || env.ANTHROPIC_AUTH_TOKEN || env.OPENAI_API_KEY || "";
       const model = opts.model || env.ANTHROPIC_MODEL || "";
+
+      // 레이트 리밋: CLI --rate-limit > 프로필 CAM_RATE_LIMIT > 0(무제한)
+      let rateLimit = 0;
+      const envRl = parseInt(env.CAM_RATE_LIMIT, 10);
+      if (opts.rateLimit !== undefined && opts.rateLimit !== "") {
+        rateLimit = parseInt(opts.rateLimit, 10) || 0;
+      } else if (Number.isFinite(envRl)) {
+        rateLimit = envRl;
+      }
 
       if (!baseUrl) {
         console.log(chalk.red(`프로필 "${name}"에 ANTHROPIC_BASE_URL 또는 OPENAI_BASE_URL이 설정되어 있지 않습니다.`));
@@ -270,6 +280,7 @@ program
           profileName: name,
           manager,
           debug: !!opts.debug,
+          rateLimit,
         });
 
       let server;
@@ -315,6 +326,7 @@ program
       console.log(chalk.dim(`  프록시: http://127.0.0.1:${port}`));
       console.log(chalk.dim(`  타겟:  ${baseUrl}`));
       console.log(chalk.dim(`  모델:  ${model || "(프로필 기본값)"}`));
+      console.log(chalk.dim(`  레이트 리밋: ${rateLimit > 0 ? rateLimit + " 회/분" : "무제한 (0)"}`));
       if (opts.debug) {
         console.log(chalk.yellow(`  디버그: 켜짐 (요청/응답 로그 출력)`));
       }

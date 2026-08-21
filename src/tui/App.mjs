@@ -77,6 +77,10 @@ export default function App() {
     const apiKey = env.ANTHROPIC_API_KEY || env.ANTHROPIC_AUTH_TOKEN || env.OPENAI_API_KEY || "";
     const model = env.ANTHROPIC_MODEL || "";
 
+    // 레이트 리밋: 프로필 CAM_RATE_LIMIT (0=무제한)
+    const envRl = parseInt(env.CAM_RATE_LIMIT, 10);
+    const rateLimit = Number.isFinite(envRl) ? envRl : 0;
+
     if (!baseUrl) {
       setProxyError(t("proxyNoBaseUrl"));
       return;
@@ -90,6 +94,7 @@ export default function App() {
         model,
         profileName,
         manager,
+        rateLimit,
       });
 
       await server.start();
