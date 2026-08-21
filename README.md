@@ -158,27 +158,27 @@ cam proxy <profile-name> --force      # Kill the process occupying the port and 
 cam proxy <profile-name> --rate-limit auto # Adaptive: start unlimited, back off on 429s
 ```
 
-포트가 이미 사용 중이면 조용히 다른 포트로 이동하지 않고 점유 프로세스(PID 포함)를 안내하는 명확한 에러를 표시합니다 — 백그라운드 서버 누적을 방지합니다. `--port`로 다른 포트를 지정하거나 `--force`로 점유 프로세스를 종료하세요.
+If the port is already in use, the proxy shows a clear error (with the occupying process's PID) instead of silently moving to another port — this prevents background servers from accumulating. Use `--port` to pick another port or `--force` to terminate the occupying process.
 
-**레이트 리밋 (3가지 모드):** `--rate-limit` 또는 프로필 env의 `CAM_RATE_LIMIT`로 설정합니다.
+**Rate limiting (3 modes):** set via `--rate-limit` or the profile env `CAM_RATE_LIMIT`.
 
-| 값 | 동작 |
+| Value | Behavior |
 |---|---|
-| `0` 또는 미설정 | **무제한** — 아무 제한 없음 |
-| 숫자 `N` | **고정 한도** — 슬라이딩 윈도우로 분당 N회 초과 시 지연 (Claude Code에 429 없음) |
-| `auto` | **적응형(AIMD)** — 무제한으로 시작, 공급자가 429를 반환하면 한도 절반 축소(동시 다발은 5초 쿨다운으로 1회만, 최소 1/분), 90초간 안정화되면 20초마다 약 +10%씩 증가해 최적값을 학습 (상한 240/분) |
+| `0` or unset | **Unlimited** — no restriction at all |
+| Number `N` | **Fixed limit** — sliding window delays requests beyond N/min (Claude Code never sees a 429) |
+| `auto` | **Adaptive (AIMD)** — starts unlimited; on an upstream 429 the limit is halved (burst 429s count once per 5s cooldown, minimum 1/min); after 90s without a 429 it grows ~+10% every 20s to find the optimum (ceiling 240/min) |
 
-적응형 모드의 모든 조절 과정은 `~/.claude-api-manager/proxy-debug.log`에 `RATE LIMIT AUTO:` 로그로 기록됩니다.
+All adaptive adjustments are logged as `RATE LIMIT AUTO:` lines in `~/.claude-api-manager/proxy-debug.log`.
 
-**분류기 전용 공급자:** Claude Code auto 모드의 안전 분류기(sonnet/haiku/spark 계열 모델 호출)를 메인 공급자가 처리하지 못하는 경우(예: 업스트림이 분류기 패킷에 400을 반환해 Edit이 차단될 때), 프로필 env로 분류기 요청만 별도 공급자/모델로 라우팅할 수 있습니다.
+**Dedicated classifier provider:** if the main provider cannot handle Claude Code's auto-mode safety classifier requests (sonnet/haiku/spark-family models — e.g. the upstream replies 400 to classifier packets and Edit gets blocked), you can route classifier requests only to a separate provider/model via profile env:
 
-| env 키 | 설명 |
+| env key | Description |
 |---|---|
-| `CAM_CLASSIFIER_BASE_URL` | 분류기 전용 API URL (미설정 시 메인 공급자 사용) |
-| `CAM_CLASSIFIER_API_KEY` | 분류기 전용 API 키 (미설정 시 메인 키 사용) |
-| `CAM_CLASSIFIER_MODEL` | 분류기 전용 모델 (미설정 시 메인 모델 사용) |
+| `CAM_CLASSIFIER_BASE_URL` | Dedicated classifier API URL (defaults to the main provider) |
+| `CAM_CLASSIFIER_API_KEY` | Dedicated classifier API key (defaults to the main key) |
+| `CAM_CLASSIFIER_MODEL` | Dedicated classifier model (defaults to the main model) |
 
-셋 중 하나라도 설정되면 분류기성 요청(작은 sync 패킷)은 해당 설정으로 라우팅됩니다. 예: URL/키는 메인 공급자 그대로 두고 모델만 교체(`CAM_CLASSIFIER_MODEL=다른-모델`)도 가능합니다. 라우팅 시 `~/.claude-api-manager/proxy-debug.log`에 `classifier -> <url> model=<model>` 로 기록됩니다. TUI 프로필 편집(`e`)의 "분류기 공급자" 단계에서도 설정할 수 있으며, `CAM_` 키이므로 settings.json에는 기록되지 않습니다.
+If any of the three is set, classifier-shaped requests (small sync packets) are routed accordingly. For example, you can keep the main URL/key and swap only the model (`CAM_CLASSIFIER_MODEL=some-other-model`). Routing is logged as `classifier -> <url> model=<model>` in `~/.claude-api-manager/proxy-debug.log`. Also configurable in the TUI profile editor (`e`) under the "Classifier provider" step. As `CAM_` keys they are never written to settings.json.
 
 The proxy automatically:
 1. **Backs up** your current `settings.json` (the active profile's env)
