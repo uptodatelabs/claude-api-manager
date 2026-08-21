@@ -140,18 +140,22 @@ class ProxyServer {
   // 레이트 리밋 (슬라이딩 윈도우). 공급자가 429를 반환하지 않도록
   // 분당 N회를 초과하면 공급자 전송 전까지 요청을 지연시킴 (Claude Code에는 429 미전송)
   async throttle() {
-    if (!this.rateLimit || this.rateLimit <= 0) return;
+    if (!this.rateLimit || this.rateLimit <= 0) {
+      this.log("RATE LIMIT: unlimited (rateLimit=0), no throttling");
+      return;
+    }
     const windowMs = 60000;
     while (true) {
       const now = Date.now();
       this.requestTimestamps = this.requestTimestamps.filter((t) => now - t < windowMs);
+      this.log(`RATE LIMIT: window=${this.requestTimestamps.length}/${this.rateLimit} (in 60s)`);
       if (this.requestTimestamps.length < this.rateLimit) {
         this.requestTimestamps.push(Date.now());
         return;
       }
       const oldest = this.requestTimestamps[0];
       const waitMs = Math.max(0, oldest + windowMs - now) + 5;
-      this.log(`RATE LIMIT: throttling ${waitMs}ms (${this.rateLimit}/min)`);
+      this.log(`RATE LIMIT: THROTTLING ${waitMs}ms (${this.rateLimit}/min) before sending to upstream`);
       await new Promise((r) => setTimeout(r, waitMs));
     }
   }
@@ -397,7 +401,11 @@ class ProxyServer {
 
   async handleMessages(body, req, res) {
     // 레이트 리밋: 공급자 429 방지용 지연 (0=무제한)
+    const seq = (this.requestSeq = (this.requestSeq || 0) + 1);
+    const t0 = Date.now();
     await this.throttle();
+    const rlDelay = Date.now() - t0;
+    this.log(`[req ${seq}] rate-limit: delay=${rlDelay}ms, window=${this.requestTimestamps.length}/${this.rateLimit || 0}, model=${body.model || "?"}`);
 
     // 분류기 요청이면 프로필 모델로 치환
     if (this.isClassifierRequest(body.model)) {
