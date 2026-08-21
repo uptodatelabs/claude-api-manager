@@ -25,6 +25,7 @@ export default function MainPanel({
   scroll,
   focus,
   pendingDelete,
+  pendingAddAsNew,
   renameTarget,
   renameValue,
   onRenameChange,
@@ -368,6 +369,47 @@ export default function MainPanel({
           Box,
           { marginTop: 1 },
           e(Text, { color: colors.muted }, t("saveConfirm"))
+        )
+      );
+    }
+
+    // 이름 변경 후 새 프로필로 추가 확인 다이얼로그
+    if (pendingAddAsNew) {
+      return e(
+        Box,
+        {
+          flexDirection: "column",
+          borderStyle: "round",
+          borderColor: "yellow",
+          paddingX: 2,
+          paddingY: 2,
+          flexGrow: 1,
+          justifyContent: "center",
+        },
+        e(
+          Box,
+          { marginBottom: 1 },
+          e(Text, { color: colors.warning, bold: true }, t("addAsNewTitle"))
+        ),
+        e(
+          Box,
+          { marginBottom: 2 },
+          e(Text, { color: colors.muted }, t("addAsNewConfirm", { old: pendingAddAsNew.oldName, new: pendingAddAsNew.newName }))
+        ),
+        e(
+          Box,
+          null,
+          e(Text, { color: colors.success, bold: true }, " [y] "),
+          e(Text, { color: colors.muted }, t("addAsNewYes") + "   "),
+          e(Text, { color: colors.primary, bold: true }, " [n] "),
+          e(Text, { color: colors.muted }, t("addAsNewNo") + "   "),
+          e(Text, { color: colors.muted }, "[Esc] "),
+          e(Text, { color: colors.muted }, t("back"))
+        ),
+        e(
+          Box,
+          { marginTop: 1 },
+          e(Text, { color: colors.muted }, t("addAsNewHint"))
         )
       );
     }

@@ -62,6 +62,7 @@ const STEP_FIELDS = {
     { name: "ANTHROPIC_MODEL", labelKey: "proxyModel", placeholderKey: "proxyModelPlaceholder" },
   ],
   meta: [
+    { name: "profileName", labelKey: "profileNameLabel", placeholderKey: "profileNamePlaceholder" },
     { name: "ANTHROPIC_MODEL", labelKey: "ANTHROPIC_MODEL", placeholderKey: "ANTHROPIC_MODEL" },
     { name: "model", labelKey: "modelLabel", placeholderKey: "modelLabel" },
     { name: "fallbackModel", labelKey: "fallbackLabel", placeholderKey: "fallbackModel" },

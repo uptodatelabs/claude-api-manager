@@ -35,6 +35,7 @@ export default function App() {
   const [sidebarManualScroll, setSidebarManualScroll] = useState(0);
   const [focus, setFocus] = useState("sidebar");
   const [pendingDelete, setPendingDelete] = useState(null);
+  const [pendingAddAsNew, setPendingAddAsNew] = useState(null);
   const [renameTarget, setRenameTarget] = useState(null);
   const [renameValue, setRenameValue] = useState("");
   const [settingsContent, setSettingsContent] = useState(null);
@@ -178,6 +179,7 @@ export default function App() {
     view,
     focus,
     pendingDelete,
+    pendingAddAsNew,
     renameTarget,
     filtered: filteredProfiles,
     activeProfileName: activeProfile,
@@ -327,6 +329,42 @@ export default function App() {
         setPendingDelete(null);
       } else if (input === "n" || key.escape) {
         setPendingDelete(null);
+      }
+      return;
+    }
+
+    // 이름 변경 후 새 프로필로 추가할지 확인 중
+    if (s.pendingAddAsNew) {
+      if (input === "y" || key.return) {
+        const p = s.pendingAddAsNew;
+        try {
+          manager.addProfile(p.newName, p.env, p.model, p.fallback, p.description, p.tags);
+          flash(t("successAdded", { name: p.newName }), "success");
+          reload();
+          setView("detail");
+          setFormStepIdx(0);
+          setFormData({ provider: "anthropic" });
+          setEditingProfile(null);
+        } catch (err) {
+          flash(t("errorMsg", { msg: err.message }), "danger");
+        }
+        setPendingAddAsNew(null);
+      } else if (input === "n") {
+        const p = s.pendingAddAsNew;
+        try {
+          manager.updateProfile(p.oldName, p.env, p.model, p.fallback, p.description, p.tags);
+          flash(t("successUpdated", { name: p.oldName }), "success");
+          reload();
+          setView("detail");
+          setFormStepIdx(0);
+          setFormData({ provider: "anthropic" });
+          setEditingProfile(null);
+        } catch (err) {
+          flash(t("errorMsg", { msg: err.message }), "danger");
+        }
+        setPendingAddAsNew(null);
+      } else if (key.escape) {
+        setPendingAddAsNew(null);
       }
       return;
     }
@@ -583,6 +621,7 @@ export default function App() {
       setFormData({
         provider: detectProvider(env),
         ...standardEnv,
+        profileName: p.name,
         model: p.model || "",
         fallbackModel: p.fallbackModel ? p.fallbackModel.join(", ") : "",
         description: p.description || "",
@@ -695,11 +734,15 @@ export default function App() {
   })();
 
   const goFormNext = () => {
-    if (formStepIdx === STEPS.length - 1) {
+    const stepsForCheck =
+      formData.provider === "proxy"
+        ? ["provider", "proxy_template", "proxy_keys", "meta", "custom"]
+        : STEPS;
+    if (formStepIdx === stepsForCheck.length - 1) {
       try {
         const env = {};
         for (const [k, v] of Object.entries(formData)) {
-          if (["provider", "model", "fallbackModel", "description", "tags", "customList"].includes(k)) continue;
+          if (["provider", "profileName", "model", "fallbackModel", "description", "tags", "customList"].includes(k)) continue;
           if (typeof v !== "string") continue;
           const trimmed = v.trim();
           if (!trimmed || trimmed === "-") continue;
@@ -736,17 +779,26 @@ export default function App() {
         }
 
         if (isEdit) {
-          manager.updateProfile(
-            editingProfile.name,
-            env,
-            model,
-            fallback,
-            description,
-            tags
-          );
-          flash(t("successUpdated", { name: editingProfile.name }), "success");
+          const newName = (formData.profileName || "").trim();
+          const oldName = editingProfile.name;
+          const nameChanged = newName && newName !== oldName;
+          if (nameChanged) {
+            setPendingAddAsNew({
+              oldName,
+              newName,
+              env,
+              model,
+              fallback,
+              description,
+              tags,
+            });
+            return;
+          }
+          manager.updateProfile(oldName, env, model, fallback, description, tags);
+          flash(t("successUpdated", { name: oldName }), "success");
         } else {
-          const name = `profile-${Date.now()}`;
+          const rawName = (formData.profileName || "").trim();
+          const name = rawName || `profile-${Date.now()}`;
           manager.addProfile(name, env, model, fallback, description, tags);
           flash(t("successAdded", { name }), "success");
         }
@@ -845,6 +897,7 @@ export default function App() {
             scroll: scrollOffset,
             focus: focus === "main",
             pendingDelete,
+            pendingAddAsNew,
             renameTarget,
             renameValue,
             settingsContent,
