@@ -180,6 +180,8 @@ All adaptive adjustments are logged as `RATE LIMIT AUTO:` lines in `~/.claude-ap
 
 If any of the three is set, classifier-shaped requests (small sync packets) are routed accordingly. For example, you can keep the main URL/key and swap only the model (`CAM_CLASSIFIER_MODEL=some-other-model`). Routing is logged as `classifier -> <url> model=<model>` in `~/.claude-api-manager/proxy-debug.log`. Also configurable in the TUI profile editor (`e`) under the "Classifier provider" step. As `CAM_` keys they are never written to settings.json.
 
+Tool-call arguments are buffered and validated — truncated leading bytes (e.g. missing `{"`) from provider-specific chunking are automatically repaired, so upstream quirks don't break Claude Code's `InputValidationError`.
+
 The proxy automatically:
 1. **Backs up** your current `settings.json` (the active profile's env)
 2. **Sets** `ANTHROPIC_BASE_URL=http://127.0.0.1:<port>` in `settings.json`
@@ -443,6 +445,8 @@ cam proxy <프로필-이름> --rate-limit auto # 적응형: 무제한 시작, 42
 | `CAM_CLASSIFIER_MODEL` | 분류기 전용 모델 (미설정 시 메인 모델 사용) |
 
 셋 중 하나라도 설정되면 분류기성 요청(작은 sync 패킷)은 해당 설정으로 라우팅됩니다. 예: URL/키는 메인 공급자 그대로 두고 모델만 교체(`CAM_CLASSIFIER_MODEL=다른-모델`)도 가능합니다. 라우팅 시 `~/.claude-api-manager/proxy-debug.log`에 `classifier -> <url> model=<model>` 로 기록됩니다. TUI 프로필 편집(`e`)의 "분류기 공급자" 단계에서도 설정할 수 있으며, `CAM_` 키이므로 settings.json에는 기록되지 않습니다.
+
+툴콜 인자는 버퍼링 후 검증되며, 공급자별 청킹 차이로 선행 바이트(`{"` 등)가 유실되어도 자동으로 복구되므로 Claude Code의 `InputValidationError`가 발생하지 않습니다.
 
 프록시가 자동으로 수행하는 작업:
 1. 현재 `settings.json` **백업** (활성 프로필 env 기준)
