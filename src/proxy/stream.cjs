@@ -122,6 +122,23 @@ class StreamConverter {
     });
   }
 
+  // --- tool-call 인자 복구 유틸 (손상 없으면 원본 그대로 반환) ---
+  isValidJson(s) {
+    if (typeof s !== "string" || s.length === 0) return false;
+    try { JSON.parse(s); return true; } catch { return false; }
+  }
+
+  repairArgs(raw) {
+    if (this.isValidJson(raw)) return raw;
+    if (!raw || typeof raw !== "string") return null;
+    const candidates = [];
+    // 관측된 시그니처: 선행 {" 유실 -> '{"' + raw 로 복원
+    if (!raw.startsWith("{")) candidates.push('{"' + raw);
+    candidates.push("{" + raw);
+    for (const c of candidates) if (this.isValidJson(c)) return c;
+    return null;
+  }
+
   handleToolCallStart(toolCall) {
     this.ensureStarted();
     if (this.thinkingBlockOpen) {
@@ -152,24 +169,36 @@ class StreamConverter {
     const block = this.toolBlocks[idx];
     if (!block) return;
     const args = (toolCall.function && toolCall.function.arguments) || "";
+    // 버퍼링만 하고 즉시 전송하지 않음 — 재청킹 경계 버그 및 B원천 손상 방지 (§4-A)
     block.args += args;
-    this.writeSSE("content_block_delta", {
-      type: "content_block_delta",
-      index: idx,
-      delta: { type: "input_json_delta", partial_json: args },
-    });
   }
 
   handleToolCallEnd() {
     const idx = this.blockIndex;
-    if (this.toolBlocks[idx]) {
-      this.writeSSE("content_block_stop", {
-        type: "content_block_stop",
-        index: idx,
-      });
-      this.blockIndex++;
-      delete this.toolBlocks[idx];
+    const block = this.toolBlocks[idx];
+    if (!block) return;
+    // 완성 시점에 1회 검증·복구 후 전송 (§4-B)
+    if (block.args) {
+      let toSend = block.args;
+      if (!this.isValidJson(toSend)) {
+        const repaired = this.repairArgs(toSend);
+        if (repaired !== null) toSend = repaired;
+        // 복구 불가면 원본 유지 — 거짓 인자를 만들지 않음
+      }
+      if (toSend) {
+        this.writeSSE("content_block_delta", {
+          type: "content_block_delta",
+          index: idx,
+          delta: { type: "input_json_delta", partial_json: toSend },
+        });
+      }
     }
+    this.writeSSE("content_block_stop", {
+      type: "content_block_stop",
+      index: idx,
+    });
+    this.blockIndex++;
+    delete this.toolBlocks[idx];
   }
 
   /**
@@ -204,11 +233,18 @@ class StreamConverter {
       if (delta.tool_calls) {
         for (const tc of delta.tool_calls) {
           if (tc.id) {
-            // 새 tool call 시작
+            // 새 tool call 시작 — arguments가 같은 델타에 함께 와도 유실 없이 누적
             this.handleToolCallStart(tc);
+            if (tc.function && tc.function.arguments) {
+              this.handleToolCallDelta(tc);
+            }
           } else if (tc.function && tc.function.arguments) {
             // tool call 인자 스트리밍
             this.handleToolCallDelta(tc);
+          } else if (tc.function && tc.function.name) {
+            // name이 분할 전송되는 케이스 대비
+            const blk = this.toolBlocks[this.blockIndex];
+            if (blk) blk.name = (blk.name || "") + tc.function.name;
           }
         }
       }

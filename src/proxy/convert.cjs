@@ -163,14 +163,30 @@ function convertToolChoice(choice) {
 
 // ── OpenAI → Anthropic 응답 변환 ──────────────────────────────────────
 
+function isValidJson(s) {
+  if (typeof s !== "string" || s.length === 0) return false;
+  try { JSON.parse(s); return true; } catch { return false; }
+}
+function repairArgs(raw) {
+  if (isValidJson(raw)) return raw;
+  if (!raw || typeof raw !== "string") return null;
+  const cands = [];
+  if (!raw.startsWith("{")) cands.push('{"' + raw);
+  cands.push("{" + raw);
+  for (const c of cands) if (isValidJson(c)) return c;
+  return null;
+}
 function convertOpenAIToolCalls(toolCalls) {
   if (!toolCalls || toolCalls.length === 0) return [];
   return toolCalls.map((tc) => {
     let input = {};
+    const raw = tc.function.arguments;
+    const repaired = repairArgs(raw);
+    const toParse = repaired !== null ? repaired : raw;
     try {
-      input = JSON.parse(tc.function.arguments);
+      input = JSON.parse(toParse);
     } catch {
-      input = { raw: tc.function.arguments };
+      input = { raw: toParse };
     }
     return {
       type: "tool_use",
