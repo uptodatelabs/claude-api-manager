@@ -359,8 +359,11 @@ export default function App() {
       } else if (input === "n") {
         const p = s.pendingAddAsNew;
         try {
-          manager.updateProfile(p.oldName, p.env, p.model, p.fallback, p.description, p.tags);
-          flash(t("successUpdated", { name: p.oldName }), "success");
+          if (p.newName !== p.oldName) {
+            manager.renameProfile(p.oldName, p.newName);
+          }
+          manager.updateProfile(p.newName, p.env, p.model, p.fallback, p.description, p.tags);
+          flash(t("successUpdated", { name: p.newName }), "success");
           reload();
           setView("detail");
           setFormStepIdx(0);
