@@ -12,6 +12,7 @@
   ],
   "scripts": {
     "start": "node bin/cli.mjs",
+    "test": "node test/session-header.cjs",
     "prepublishOnly": "node -e \"import('./src/tui/App.mjs').then(() => console.log('OK'))\""
   },
   "keywords": [

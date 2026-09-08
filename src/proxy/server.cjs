@@ -10,9 +10,24 @@ const { execFile } = require("child_process");
 const { URL } = require("url");
 const { anthropicToOpenAI, openAIToAnthropic } = require("./convert.cjs");
 const { StreamConverter } = require("./stream.cjs");
+const { randomUUID } = require("crypto");
+
+// 프록시 인스턴스 세션 ID — 서버 인스턴스 수명 동안 안정적 (생성자에서 1회 생성).
+// 세션 라우팅을 도입한 공급자(opencode Console Go 등)는 x-opencode-session 헤더가
+// 없는 요청을 400(MissingSessionID)으로 거부한다. 공식 문서 요구는 "대화별 안정적
+// 세션 ID를 헤더로 전송"뿐이고 형식은 클라이언트 생성(세션 생성 API 없음)이므로,
+// 요청마다 무작위 ID를 보내는 것보다 서버 수명 동안 고정 ID가 라우팅·캐싱에 유리하다.
+// 모듈 상수가 아닌 인스턴스 필드인 이유: 한 프로세스에 여러 프록시(프로필)가 뜰 수
+// 있으므로 서로 다른 세션으로 구분하는 편이 안전하다. unrecognized header이므로
+// 다른 공급자에는 무해하다.
 
 const BACKUP_FILE = path.join(os.homedir(), ".claude-api-manager", "proxy-settings-backup.json");
-const DEBUG_LOG_FILE = path.join(os.homedir(), ".claude-api-manager", "proxy-debug.log");
+// 디버그 로그 기본 경로. options.debugLogFile > env CAM_DEBUG_LOG_FILE > 기본 순으로
+// 오버라이드 (테스트/병렬 실행이 실제 사용자의 로그를 덮어쓰지 않도록).
+const DEBUG_LOG_DEFAULT = path.join(os.homedir(), ".claude-api-manager", "proxy-debug.log");
+function resolveDebugLogFile(optPath) {
+  return path.resolve(optPath || process.env.CAM_DEBUG_LOG_FILE || DEBUG_LOG_DEFAULT);
+}
 const MAX_DEBUG_LOGS = 100;
 
 // 레이트 리밋 값 파싱: "auto"=적응형(AIMD), 양의 정수=고정 한도, 그 외(0/미설정)=무제한
@@ -113,6 +128,8 @@ class ProxyServer {
     this.classifierApiKey = options.classifierApiKey || "";
     this.classifierModel = options.classifierModel || "";
     this.profileName = options.profileName || "";
+    // 이 인스턴스의 세션 헤더 값 (서버 수명 동안 고정)
+    this.sessionId = `cam-${randomUUID()}`;
     this.manager = options.manager || null;
     this.server = null;
     this.running = false;
@@ -137,10 +154,12 @@ class ProxyServer {
     this.increaseIntervalMs = Number.isFinite(options.increaseIntervalMs) ? options.increaseIntervalMs : 20000;
     this.debug = !!options.debug;
     this.debugLogs = [];
+    // 디버그 로그 경로: options.debugLogFile > CAM_DEBUG_LOG_FILE env > 기본(홈)
+    this.debugLogFile = resolveDebugLogFile(options.debugLogFile);
     // 로그 파일 초기화 (시작 시 새로 시작)
     try {
-      fs.mkdirSync(path.dirname(DEBUG_LOG_FILE), { recursive: true });
-      fs.writeFileSync(DEBUG_LOG_FILE, `=== proxy debug log started ${new Date().toISOString()} ===\n`, "utf-8");
+      fs.mkdirSync(path.dirname(this.debugLogFile), { recursive: true });
+      fs.writeFileSync(this.debugLogFile, `=== proxy debug log started ${new Date().toISOString()} ===\n`, "utf-8");
     } catch {}
   }
 
@@ -152,7 +171,7 @@ class ProxyServer {
       this.debugLogs.shift();
     }
     try {
-      fs.appendFileSync(DEBUG_LOG_FILE, line + "\n", "utf-8");
+      fs.appendFileSync(this.debugLogFile, line + "\n", "utf-8");
     } catch {}
     if (this.debug) {
       console.error(line);
@@ -561,6 +580,9 @@ class ProxyServer {
     const headers = {
       "Content-Type": "application/json",
       Authorization: `Bearer ${effectiveApiKey}`,
+      // 세션 헤더 (공급자 무관 지원) — 세션 라우팅·캐싱을 요구하는 공급자 대응.
+      // 미인식 헤더는 무해하므로 모든 upstream에 항상 보낸다.
+      "x-opencode-session": this.sessionId,
     };
 
     const options = {

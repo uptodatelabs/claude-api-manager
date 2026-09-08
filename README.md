@@ -168,7 +168,7 @@ If the port is already in use, the proxy shows a clear error (with the occupying
 | Number `N` | **Fixed limit** — sliding window delays requests beyond N/min (Claude Code never sees a 429) |
 | `auto` | **Adaptive (AIMD)** — starts unlimited; on an upstream 429 the limit is halved (burst 429s count once per 5s cooldown, minimum 1/min); after 90s without a 429 it grows ~+10% every 20s to find the optimum (ceiling 240/min) |
 
-All adaptive adjustments are logged as `RATE LIMIT AUTO:` lines in `~/.claude-api-manager/proxy-debug.log`.
+All adaptive adjustments are logged as `RATE LIMIT AUTO:` lines in `~/.claude-api-manager/proxy-debug.log`. Set the `CAM_DEBUG_LOG_FILE` environment variable (or the `debugLogFile` option) to write the debug log to a different path — useful when running multiple proxies or tests in parallel without clobbering your user log.
 
 **Dedicated classifier provider:** if the main provider cannot handle Claude Code's auto-mode safety classifier requests (sonnet/haiku/spark-family models — e.g. the upstream replies 400 to classifier packets and Edit gets blocked), you can route classifier requests only to a separate provider/model via profile env:
 
@@ -201,6 +201,7 @@ The proxy converts:
 - `x-api-key` → `Authorization: Bearer`
 - Streaming SSE events (bidirectional)
 - Tool calls/results (Anthropic ↔ OpenAI)
+- Session routing header (`x-opencode-session`) — automatically attached to every upstream request. Providers that require a session ID (e.g. opencode) reject requests without it (`400 MissingSessionID`); the ID is generated once per proxy instance and stays stable for the whole run. Unknown headers are harmless to other providers.
 
 ### CLI Commands
 
@@ -434,7 +435,7 @@ cam proxy <프로필-이름> --rate-limit auto # 적응형: 무제한 시작, 42
 | 숫자 `N` | **고정 한도** — 슬라이딩 윈도우로 분당 N회 초과 시 지연 (Claude Code에 429 없음) |
 | `auto` | **적응형(AIMD)** — 무제한으로 시작, 공급자가 429를 반환하면 한도 절반 축소(동시 다발은 5초 쿨다운으로 1회만, 최소 1/분), 90초간 안정화되면 20초마다 약 +10%씩 증가해 최적값을 학습 (상한 240/분) |
 
-적응형 모드의 모든 조절 과정은 `~/.claude-api-manager/proxy-debug.log`에 `RATE LIMIT AUTO:` 로그로 기록됩니다.
+적응형 모드의 모든 조절 과정은 `~/.claude-api-manager/proxy-debug.log`에 `RATE LIMIT AUTO:` 로그로 기록됩니다. `CAM_DEBUG_LOG_FILE` 환경변수(또는 `debugLogFile` 옵션)로 디버그 로그 경로를 바꿀 수 있습니다 — 여러 프록시/테스트를 병렬 실행하며 사용자 로그를 덮어쓰지 않으려면 이 방법을 사용하세요.
 
 **분류기 전용 공급자:** Claude Code auto 모드의 안전 분류기(sonnet/haiku/spark 계열 모델 호출)를 메인 공급자가 처리하지 못하는 경우(예: 업스트림이 분류기 패킷에 400을 반환해 Edit이 차단될 때), 프로필 env로 분류기 요청만 별도 공급자/모델로 라우팅할 수 있습니다.
 
@@ -467,6 +468,7 @@ claude  # Claude Code가 자동으로 프록시를 사용
 - `x-api-key` → `Authorization: Bearer`
 - 양방향 SSE 스트리밍 이벤트
 - 도구 호출/결과 (Anthropic ↔ OpenAI)
+- 세션 라우팅 헤더(`x-opencode-session`) — 모든 업스트림 요청에 자동 첨부. 세션 ID를 요구하는 공급자(opencode 등)는 헤더가 없는 요청을 `400 MissingSessionID`로 거부합니다. ID는 프록시 인스턴스당 1회 생성되어 실행 기간 동안 고정되며, 모르는 헤더를 무시하는 다른 공급자에는 무해합니다.
 
 ### CLI 명령
 
