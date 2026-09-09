@@ -66,14 +66,50 @@ function convertAnthropicContent(content) {
   };
 }
 
+function sanitizeSchemaForUpstream(node) {
+  // byNara/muse-spark 업스트림은 RE2 기반 validator라 lookaround 포함 pattern에서 400.
+  // T6 실측: pattern 제거 시 200. 단순 pattern은 유지하고 lookaround만 제거.
+  if (Array.isArray(node)) {
+    for (const v of node) sanitizeSchemaForUpstream(v);
+    return node;
+  }
+  if (node && typeof node === "object") {
+    if (typeof node.pattern === "string" && /\(\?([=!]|<[=!])/.test(node.pattern)) {
+      delete node.pattern;
+    }
+    for (const k in node) sanitizeSchemaForUpstream(node[k]);
+  }
+  return node;
+}
+
+function toUpstreamParameters(inputSchema) {
+  const cloned = JSON.parse(JSON.stringify(inputSchema || {}));
+  return sanitizeSchemaForUpstream(cloned);
+}
+
 function convertAnthropicTools(tools) {
   if (!tools || tools.length === 0) return undefined;
+  // 원인 파악용 격리 모드: CAM_ONLY_ARTIFACT=1 이면 Artifact 1개만 통과.
+  // proxy 재시작 후 Claude 요청 시 OUT tools=1[Artifact] 로 upstream에 전달되어
+  // Artifact 단독 거부 여부를 로그(STREAM errline)로 확정할 수 있다.
+  if (process.env.CAM_ONLY_ARTIFACT === "1") {
+    const only = (tools || []).filter((tool) => tool && tool.name === "Artifact");
+    if (only.length === 0) return undefined;
+    return only.map((tool) => ({
+      type: "function",
+      function: {
+        name: tool.name,
+        description: tool.description || "",
+        parameters: toUpstreamParameters(tool.input_schema),
+      },
+    }));
+  }
   return tools.map((tool) => ({
     type: "function",
     function: {
       name: tool.name,
       description: tool.description || "",
-      parameters: tool.input_schema || {},
+      parameters: toUpstreamParameters(tool.input_schema),
     },
   }));
 }

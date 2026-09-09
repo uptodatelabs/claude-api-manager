@@ -552,6 +552,166 @@ class ProxyServer {
     return true;
   }
 
+  // ── 전문 비교용 상세 로그 (proxy vs node 직접전송) ─────────────
+  //민감값(API키)은 마스킹. outbound 전문은 파일로 덤프해 node 재전송 가능하게 함.
+  summarizeBody(seq, body, openaiRequest, targetUrl, headers) {
+    try {
+      const inboundKeys = body ? Object.keys(body) : [];
+      const inTools = Array.isArray(body?.tools) ? body.tools : [];
+      const inToolNames = inTools.map((t) => t?.name || "?");
+      const inToolSchemaBytes = inTools.map((t) => {
+        try { return JSON.stringify(t?.input_schema || {}).length; } catch { return -1; }
+      });
+      const inMsgs = Array.isArray(body?.messages) ? body.messages : [];
+      const inMsgSummary = inMsgs.map((m) => {
+        const c = m?.content;
+        if (typeof c === "string") return `${m?.role}:str:${c.length}`;
+        if (Array.isArray(c)) {
+          const types = c.map((b) => b?.type || "?").join(",");
+          let len = 0;
+          try { len = JSON.stringify(c).length; } catch {}
+          return `${m?.role}:[${types}]:${len}B`;
+        }
+        return `${m?.role}:?`;
+      });
+      let systemInfo = "none";
+      if (typeof body?.system === "string") systemInfo = `str:${body.system.length}`;
+      else if (Array.isArray(body?.system)) {
+        let len = 0;
+        try { len = JSON.stringify(body.system).length; } catch {}
+        systemInfo = `arr:${body.system.length}:${len}B`;
+      } else if (body?.system) systemInfo = typeof body.system;
+
+      const outTools = Array.isArray(openaiRequest?.tools) ? openaiRequest.tools : [];
+      const outToolNames = outTools.map((t) => t?.function?.name || t?.name || "?");
+      const outParamBytes = outTools.map((t) => {
+        try { return JSON.stringify(t?.function?.parameters || {}).length; } catch { return -1; }
+      });
+      const outMsgs = Array.isArray(openaiRequest?.messages) ? openaiRequest.messages : [];
+      const outMsgSummary = outMsgs.map((m) => {
+        const c = m?.content;
+        const clen = typeof c === "string" ? c.length : (c ? JSON.stringify(c).length : 0);
+        const extra = [];
+        if (m?.tool_calls) extra.push(`tool_calls=${m.tool_calls.length}`);
+        if (m?.reasoning_content) extra.push(`reasoning=${String(m.reasoning_content).length}`);
+        return `${m?.role}:${clen}B${extra.length ? `(${extra.join(",")})` : ""}`;
+      });
+      // ── Artifact 내부 구조 분석 (거부 원인 bisect용) ──
+      // 의심 키워드: $schema / prefixItems / additionalProperties 객체형 /
+      // propertyNames / anyOf+const / pattern / type 배열 등 strict validator 거부 후보.
+      // IN(input_schema)과 OUT(parameters) 양쪽을 대조해 변환 과정에서
+      // 키가 그대로 전달되는지 확인한다.
+      const SUSPICIOUS_KEYS = ["$schema", "prefixItems", "additionalProperties", "propertyNames", "anyOf", "const", "pattern", "if", "then", "else", "not", "contains", "unevaluatedProperties", "unevaluatedItems", "dependentSchemas"];
+      const collectKeyHits = (schema) => {
+        const hits = {};
+        const seen = new Set();
+        const walk = (node, depth) => {
+          if (!node || typeof node !== "object" || depth > 8 || seen.has(node)) return;
+          seen.add(node);
+          if (Array.isArray(node)) {
+            for (const v of node) walk(v, depth + 1);
+            return;
+          }
+          for (const k of Object.keys(node)) {
+            if (SUSPICIOUS_KEYS.includes(k)) {
+              const v = node[k];
+              const vType = Array.isArray(v) ? `arr:${v.length}` : typeof v;
+              hits[k] = hits[k] ? `${hits[k]},${vType}` : vType;
+            }
+            walk(node[k], depth + 1);
+          }
+        };
+        walk(schema, 0);
+        return hits;
+      };
+      // ── Artifact 내부 구조 where/ctx 추적 (depth 6, 상위 20/5개) ──
+      const collectArtifactLocs = (schema) => {
+        const where = [];
+        const ctx = [];
+        const seen = new Set();
+        const walk = (node, curPath, depth) => {
+          if (!node || typeof node !== "object" || depth > 6 || seen.has(node)) return;
+          seen.add(node);
+          if (Array.isArray(node)) {
+            for (let i = 0; i < node.length; i++) walk(node[i], `${curPath}[${i}]`, depth + 1);
+            return;
+          }
+          for (const k of Object.keys(node)) {
+            const p = curPath ? `${curPath}.${k}` : k;
+            if (SUSPICIOUS_KEYS.includes(k)) {
+              if (where.length < 20) where.push(p);
+              if (ctx.length < 5) {
+                let vstr = "";
+                try { vstr = JSON.stringify(node[k]); } catch { vstr = String(node[k]); }
+                ctx.push(`${p}=${vstr.slice(0, 120)}`);
+              }
+            }
+            walk(node[k], p, depth + 1);
+          }
+        };
+        walk(schema, "", 0);
+        return { where, ctx };
+      };
+      let inBytes = 0, outBytes = 0;
+      try { inBytes = JSON.stringify(body).length; } catch {}
+      try { outBytes = JSON.stringify(openaiRequest).length; } catch {}
+      // ── Artifact 대상 추출 + collectKeyHits 실제 호출 ──
+      try {
+        const inArt = inTools.find((t) => t && t.name === "Artifact");
+        const outArt = outTools.find((t) => (t?.function?.name || t?.name) === "Artifact");
+        const inSchema = inArt ? (inArt.input_schema || {}) : null;
+        const outSchema = outArt ? (outArt.function?.parameters || outArt.parameters || {}) : null;
+        if (inSchema || outSchema) {
+          const inHits = inSchema ? collectKeyHits(inSchema) : {};
+          const outHits = outSchema ? collectKeyHits(outSchema) : {};
+          const inLocs = inSchema ? collectArtifactLocs(inSchema) : { where: [], ctx: [] };
+          const outLocs = outSchema ? collectArtifactLocs(outSchema) : { where: [], ctx: [] };
+          const inKeys = inSchema ? Object.keys(inSchema) : [];
+          const outKeys = outSchema ? Object.keys(outSchema) : [];
+          const inProps = inSchema && inSchema.properties ? Object.keys(inSchema.properties) : [];
+          const outProps = outSchema && outSchema.properties ? Object.keys(outSchema.properties) : [];
+          const inReq = Array.isArray(inSchema?.required) ? inSchema.required : [];
+          const outReq = Array.isArray(outSchema?.required) ? outSchema.required : [];
+          let inArtBytes = 0, outArtBytes = 0;
+          try { inArtBytes = inSchema ? JSON.stringify(inSchema).length : 0; } catch {}
+          try { outArtBytes = outSchema ? JSON.stringify(outSchema).length : 0; } catch {}
+          this.log(`[req ${seq}] ART keys IN=[${inKeys.join(",")}] OUT=[${outKeys.join(",")}]`);
+          this.log(`[req ${seq}] ART props IN=[${inProps.join(",")}] OUT=[${outProps.join(",")}]`);
+          this.log(`[req ${seq}] ART required IN=[${inReq.join(",")}] OUT=[${outReq.join(",")}]`);
+          this.log(`[req ${seq}] ART flags IN=${JSON.stringify(inHits)} OUT=${JSON.stringify(outHits)}`);
+          this.log(`[req ${seq}] ART where IN=[${inLocs.where.join(",")}] OUT=[${outLocs.where.join(",")}]`);
+          this.log(`[req ${seq}] ART ctx IN=[${inLocs.ctx.join(" | ")}] OUT=[${outLocs.ctx.join(" | ")}]`);
+          this.log(`[req ${seq}] ART bytes IN=${inArtBytes} OUT=${outArtBytes}`);
+        } else {
+          this.log(`[req ${seq}] ART none (no Artifact tool in IN/OUT)`);
+        }
+      } catch (e) {
+        this.log(`[req ${seq}] ART summarize failed: ${e.message}`);
+      }
+
+      this.log(`[req ${seq}] IN keys=[${inboundKeys.join(",")}] ${inBytes}B model=${body?.model} stream=${!!body?.stream} max_tokens=${body?.max_tokens} temp=${body?.temperature} stop=${JSON.stringify(body?.stop_sequences || null)} tool_choice=${JSON.stringify(body?.tool_choice || null)}`);
+      this.log(`[req ${seq}] IN system=${systemInfo} messages=${inMsgs.length} [${inMsgSummary.join(" | ")}]`);
+      this.log(`[req ${seq}] IN tools=${inTools.length} [${inToolNames.join(",")}] schemaB=[${inToolSchemaBytes.join(",")}]`);
+      this.log(`[req ${seq}] IN extras metadata=${body?.metadata ? JSON.stringify(body.metadata).slice(0, 200) : "none"} thinking=${body?.thinking ? JSON.stringify(body.thinking).slice(0, 200) : "none"} output_config=${body?.output_config ? JSON.stringify(body.output_config).slice(0, 200) : "none"} context_management=${body?.context_management ? JSON.stringify(body.context_management).slice(0, 200) : "none"}`);
+      const safeHeaders = { ...(headers || {}) };
+      if (safeHeaders.Authorization) safeHeaders.Authorization = "Bearer ***";
+      if (safeHeaders.authorization) safeHeaders.authorization = "***";
+      this.log(`[req ${seq}] OUT url=${targetUrl} ${outBytes}B model=${openaiRequest?.model} stream=${!!openaiRequest?.stream} max_tokens=${openaiRequest?.max_tokens} temp=${openaiRequest?.temperature} stop=${JSON.stringify(openaiRequest?.stop || null)} tool_choice=${JSON.stringify(openaiRequest?.tool_choice || null)} headers=${JSON.stringify(safeHeaders)}`);
+      this.log(`[req ${seq}] OUT messages=${outMsgs.length} [${outMsgSummary.join(" | ")}]`);
+      this.log(`[req ${seq}] OUT tools=${outTools.length} [${outToolNames.join(",")}] paramB=[${outParamBytes.join(",")}]`);
+      // outbound 전문 파일 덤프 (node 재전송용)
+      try {
+        const dumpPath = path.join(path.dirname(this.debugLogFile), `cam-outbound-${seq}-${Date.now()}.json`);
+        fs.writeFileSync(dumpPath, JSON.stringify({ url: String(targetUrl), headers: safeHeaders, body: openaiRequest }, null, 2), "utf-8");
+        this.log(`[req ${seq}] OUT dump=${dumpPath}`);
+      } catch (e) {
+        this.log(`[req ${seq}] OUT dump failed: ${e.message}`);
+      }
+    } catch (e) {
+      this.log(`[req ${seq}] summarize failed: ${e.message}`);
+    }
+  }
+
   async handleMessages(body, req, res) {
     // 레이트 리밋: 공급자 429 방지용 지연 (0=무제한)
     const seq = (this.requestSeq = (this.requestSeq || 0) + 1);
@@ -609,16 +769,20 @@ class ProxyServer {
       headers,
     };
 
+    // 전문 비교용 상세 로그 (inbound vs outbound + 파일 덤프)
+    this.summarizeBody(seq, body, openaiRequest, targetUrl, headers);
+
     if (isStream) {
-      await this.handleStream(options, openaiRequest, body.model, res);
+      await this.handleStream(options, openaiRequest, body.model, res, seq);
     } else {
-      await this.handleSync(options, openaiRequest, body.model, res);
+      await this.handleSync(options, openaiRequest, body.model, res, seq);
     }
   }
 
-  handleSync(options, openaiRequest, model, res) {
+  handleSync(options, openaiRequest, model, res, seq) {
     return new Promise((resolve, reject) => {
       const targetModule = options.port === 443 ? https : http;
+      const reqTag = seq ? `[req ${seq}] ` : "";
       const proxyReq = targetModule.request(options, (proxyRes) => {
         this.log(`RES ${proxyRes.statusCode} (sync)`);
         this.noteUpstreamStatus(proxyRes.statusCode);
@@ -687,7 +851,7 @@ class ProxyServer {
     });
   }
 
-  handleStream(options, openaiRequest, model, res) {
+  handleStream(options, openaiRequest, model, res, seq) {
     return new Promise((resolve, reject) => {
       res.writeHead(200, {
         "Content-Type": "text/event-stream",
@@ -704,6 +868,14 @@ class ProxyServer {
         usageAdded = true;
         this.addUsage(converter.inputTokens, converter.outputTokens);
       };
+      // mid-stream invalid 추적: upstream 원문 캡처 (앞 20줄 + error/invalid 포함 줄 전체)
+      const reqTag = seq ? `[req ${seq}] ` : "";
+      let streamChunkCount = 0;
+      let streamRawBytes = 0;
+      const streamHeadLines = [];
+      const streamErrorLines = [];
+      const streamDumpLines = [];
+      const MAX_DUMP_LINES = 200;
 
       const targetModule = options.port === 443 ? https : http;
       const proxyReq = targetModule.request(options, (proxyRes) => {
@@ -729,6 +901,18 @@ class ProxyServer {
         let buffer = "";
 
         proxyRes.on("data", (chunk) => {
+          try {
+            const rawStr = chunk.toString();
+            streamRawBytes += Buffer.byteLength(rawStr);
+            streamChunkCount++;
+            for (const rl of rawStr.split("\n")) {
+              const t = rl.trim();
+              if (!t) continue;
+              if (streamHeadLines.length < 20) streamHeadLines.push(t.slice(0, 500));
+              if (/error|invalid|rejected/i.test(t) && streamErrorLines.length < 20) streamErrorLines.push(t.slice(0, 1000));
+              if (streamDumpLines.length < MAX_DUMP_LINES) streamDumpLines.push(t.slice(0, 1000));
+            }
+          } catch {}
           buffer += chunk.toString();
           const lines = buffer.split("\n");
           buffer = lines.pop(); // 불완전한 라인 버퍼 유지
@@ -777,6 +961,16 @@ class ProxyServer {
           if (converter.textBlockOpen || Object.keys(converter.toolBlocks).length > 0) {
             converter.finish("stop");
           }
+          try {
+            this.log(`${reqTag}STREAM summary chunks=${streamChunkCount} bytes=${streamRawBytes} doneSeen=${streamDumpLines.some((l) => l.includes("[DONE]"))}`);
+            for (const hl of streamHeadLines.slice(0, 20)) this.log(`${reqTag}STREAM head: ${hl}`);
+            for (const el of streamErrorLines) this.log(`${reqTag}STREAM errline: ${el}`);
+            try {
+              const dumpPath = path.join(path.dirname(this.debugLogFile), `cam-stream-${seq || "x"}-${Date.now()}.log`);
+              fs.writeFileSync(dumpPath, streamDumpLines.join("\n"), "utf-8");
+              this.log(`${reqTag}STREAM dump=${dumpPath}`);
+            } catch (e) { this.log(`${reqTag}STREAM dump failed: ${e.message}`); }
+          } catch {}
           res.end();
           resolve();
         });
