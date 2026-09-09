@@ -30,7 +30,15 @@ function resolveDebugLogFile(optPath) {
 }
 const MAX_DEBUG_LOGS = 100;
 
-// 레이트 리밋 값 파싱: "auto"=적응형(AIMD), 양의 정수=고정 한도, 그 외(0/미설정)=무제한
+// 세션 헤더 on/off 파싱: true/1/on/yes → 켜기, false/0/off/no → 끄기, 그 외 기본값
+function parseSessionHeader(raw, defaultVal = true) {
+  if (raw === null || raw === undefined || raw === "") return defaultVal;
+  if (typeof raw === "boolean") return raw;
+  const s = String(raw).trim().toLowerCase();
+  if (["1", "true", "on", "yes", "enable", "enabled"].includes(s)) return true;
+  if (["0", "false", "off", "no", "disable", "disabled"].includes(s)) return false;
+  return defaultVal;
+}
 function parseRateLimit(raw) {
   if (raw === null || raw === undefined) return { mode: "off", value: 0 };
   const s = String(raw).trim().toLowerCase();
@@ -128,6 +136,13 @@ class ProxyServer {
     this.classifierApiKey = options.classifierApiKey || "";
     this.classifierModel = options.classifierModel || "";
     this.profileName = options.profileName || "";
+    // x-opencode-session 헤더 on/off — 기본 켜짐.
+    // 우선순위: options.sessionHeader > env CAM_SESSION_HEADER > 기본(true).
+    // byNara 등 엄격 게이트웨이는 미인식 헤더를 400으로 거부하므로 off 필요.
+    this.sessionHeaderEnabled = parseSessionHeader(
+      options.sessionHeader !== undefined ? options.sessionHeader : process.env.CAM_SESSION_HEADER,
+      true
+    );
     // 이 인스턴스의 세션 헤더 값 (서버 수명 동안 고정)
     this.sessionId = `cam-${randomUUID()}`;
     this.manager = options.manager || null;
@@ -580,10 +595,11 @@ class ProxyServer {
     const headers = {
       "Content-Type": "application/json",
       Authorization: `Bearer ${effectiveApiKey}`,
-      // 세션 헤더 (공급자 무관 지원) — 세션 라우팅·캐싱을 요구하는 공급자 대응.
-      // 미인식 헤더는 무해하므로 모든 upstream에 항상 보낸다.
-      "x-opencode-session": this.sessionId,
     };
+    // 세션 헤더 on/off — 기본 켜짐. 끄기: CAM_SESSION_HEADER=off / CLI --session-header off / 프로필 CAM_SESSION_HEADER=off.
+    if (this.sessionHeaderEnabled) {
+      headers["x-opencode-session"] = this.sessionId;
+    }
 
     const options = {
       hostname: targetUrl.hostname,
@@ -794,4 +810,4 @@ class ProxyServer {
   }
 }
 
-module.exports = { ProxyServer, parseRateLimit, findPidOnPort, getProcessName, killPids };
+module.exports = { ProxyServer, parseRateLimit, parseSessionHeader, findPidOnPort, getProcessName, killPids };

@@ -12,6 +12,10 @@
  *  S1 채팅 요청에 x-opencode-session 헤더가 포함됨 (sync + stream)
  *  S2 같은 프로세스 내 요청들은 동일 세션 ID (요청별 무작위 아님)
  *  S2b 다른 cam 인스턴스는 다른 세션 ID (인스턴스 단위 고유성)
+ *  S3 manager 미지정 시 settings 백업/수정 없음
+ *  S4 sessionHeader:'off' 시 x-opencode-session 미전송
+ *  S5 env CAM_SESSION_HEADER=off 시 x-opencode-session 미전송
+ *  S6 parseSessionHeader on/off 매핑
  *
  * 실행: node test/session-header.cjs  (npm test로 실행됨)
  *
@@ -199,6 +203,63 @@ async function main() {
 
   // settings.json 무건드림 확인 (manager 미지정)
   check("S3 manager 미지정 시 settings 백업/수정 없음", !proxyA.settingsBackup, JSON.stringify(proxyA.settingsBackup));
+
+  // S4 sessionHeader:'off' → 업스트림에 헤더 미전송 (엄격 게이트웨이 대응)
+  const sinkC = [];
+  const upC = makeUpstream(sinkC);
+  const upCPort = await listen(upC);
+  const proxyC = new ProxyServer({
+    port: await freePort(),
+    targetUrl: `http://127.0.0.1:${upCPort}/v1`,
+    apiKey: "k",
+    model: "mock-model",
+    sessionHeader: "off",
+  });
+  await proxyC.start();
+  const rC = await callProxy(proxyC.port, anthropicBody(false));
+  check(
+    "S4 sessionHeader off 시 x-opencode-session 미전송",
+    rC.status === 200 && sinkC.length === 1 && sinkC[0] === "",
+    `status=${rC.status} sink=${JSON.stringify(sinkC)} body=${rC.body.slice(0, 120)}`
+  );
+  await proxyC.stop();
+  upC.close();
+
+  // S5 env CAM_SESSION_HEADER=off → 업스트림에 헤더 미전송 (프로필/환경 경로)
+  const prevEnv = process.env.CAM_SESSION_HEADER;
+  process.env.CAM_SESSION_HEADER = "off";
+  const sinkD = [];
+  const upD = makeUpstream(sinkD);
+  const upDPort = await listen(upD);
+  const proxyD = new ProxyServer({
+    port: await freePort(),
+    targetUrl: `http://127.0.0.1:${upDPort}/v1`,
+    apiKey: "k",
+    model: "mock-model",
+  });
+  await proxyD.start();
+  const rD = await callProxy(proxyD.port, anthropicBody(false));
+  check(
+    "S5 env CAM_SESSION_HEADER=off 시 x-opencode-session 미전송",
+    rD.status === 200 && sinkD.length === 1 && sinkD[0] === "",
+    `status=${rD.status} sink=${JSON.stringify(sinkD)} body=${rD.body.slice(0, 120)}`
+  );
+  await proxyD.stop();
+  upD.close();
+  if (prevEnv === undefined) delete process.env.CAM_SESSION_HEADER;
+  else process.env.CAM_SESSION_HEADER = prevEnv;
+
+  // S6 parseSessionHeader on/off 매핑
+  const { parseSessionHeader } = require("../src/proxy/server.cjs");
+  const mappingOk =
+    parseSessionHeader(undefined, true) === true &&
+    parseSessionHeader("", true) === true &&
+    parseSessionHeader("on", true) === true &&
+    parseSessionHeader("1", true) === true &&
+    parseSessionHeader("off", true) === false &&
+    parseSessionHeader("0", true) === false &&
+    parseSessionHeader("false", true) === false;
+  check("S6 parseSessionHeader on/off 매핑", mappingOk, "undefined/''/on/1→true, off/0/false→false 기대");
 
   await proxyA.stop();
   await proxyB.stop();

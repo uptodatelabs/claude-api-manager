@@ -238,6 +238,7 @@ program
   .option("-d, --debug", "디버그 로그 출력 (요청/응답 상태)")
   .option("-f, --force", "포트가 점유 중이면 점유 프로세스를 종료하고 시작")
   .option("-r, --rate-limit <n>", "분당 요청 수: 숫자=고정 한도, auto=429 적응형(AIMD), 0/미설정=무제한. 프로필 CAM_RATE_LIMIT보다 우선")
+  .option("--session-header <on|off>", "x-opencode-session 헤더 on/off (기본 on). 프로필 CAM_SESSION_HEADER보다 우선")
   .action(async (name, opts) => {
     try {
       const profile = manager.getProfile(name);
@@ -274,6 +275,9 @@ program
       const classifierApiKey = env.CAM_CLASSIFIER_API_KEY || "";
       const classifierModel = env.CAM_CLASSIFIER_MODEL || "";
 
+      // 세션 헤더 on/off 우선순위: CLI --session-header > 프로필 CAM_SESSION_HEADER > 기본(on)
+      const sessionHeader = opts.sessionHeader !== undefined ? opts.sessionHeader : env.CAM_SESSION_HEADER;
+
       const makeServer = () =>
         new ProxyServer({
           port,
@@ -287,6 +291,7 @@ program
           classifierTargetUrl,
           classifierApiKey,
           classifierModel,
+          sessionHeader,
         });
 
       let server;
