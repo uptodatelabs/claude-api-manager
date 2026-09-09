@@ -46,6 +46,7 @@ export const KNOWN_ENV_KEYS = [
   "ANTHROPIC_AWS_API_KEY",
   "ANTHROPIC_AWS_BASE_URL",
   "CAM_RATE_LIMIT",
+  "CAM_SESSION_HEADER",
   "CAM_CLASSIFIER_BASE_URL",
   "CAM_CLASSIFIER_API_KEY",
   "CAM_CLASSIFIER_MODEL",
@@ -70,6 +71,7 @@ const STEP_FIELDS = {
     { name: "model", labelKey: "modelLabel", placeholderKey: "modelLabel" },
     { name: "fallbackModel", labelKey: "fallbackLabel", placeholderKey: "fallbackModel" },
     { name: "CAM_RATE_LIMIT", labelKey: "rateLimit", placeholderKey: "rateLimitPlaceholder" },
+    { name: "CAM_SESSION_HEADER", labelKey: "sessionHeaderLabel", placeholderKey: "sessionHeaderPlaceholder", type: "sessionHeader" },
     { name: "description", labelKey: "descLabel", placeholderKey: "descPlaceholder" },
     { name: "tags", labelKey: "tagsLabel", placeholderKey: "tags" },
   ],
@@ -339,6 +341,42 @@ export function FormStep({ step, formData, setFormData, onNext, onPrev, onCancel
     );
   } else if (step === "meta") {
     title = t("metaStep");
+    // x-opencode-session on/off 선택 필드 (CAM_SESSION_HEADER)
+    if (field && field.type === "sessionHeader") {
+      const cur = (formData[field.name] || "").trim().toLowerCase();
+      const initialIndex = cur === "off" ? 1 : cur === "on" ? 0 : 2;
+      const items = [
+        { label: t("sessionHeaderOn"), value: "on" },
+        { label: t("sessionHeaderOff"), value: "off" },
+        { label: t("sessionHeaderDefault"), value: "" },
+      ];
+      body = e(
+        Box,
+        { flexDirection: "column" },
+        e(
+          Box,
+          { marginBottom: 1 },
+          e(Text, { color: colors.primary }, t(field.labelKey))
+        ),
+        e(SelectInput, {
+          items,
+          initialIndex,
+          onSelect: (item) => {
+            set({ [field.name]: item.value });
+            setTimeout(nextField, 100);
+          },
+        }),
+        e(
+          Box,
+          { marginTop: 1 },
+          e(
+            Text,
+            { color: colors.muted },
+            t("fieldIndicator", { cur: fieldIdx + 1, total: fields.length })
+          )
+        )
+      );
+    } else {
     body = e(
       Box,
       { flexDirection: "column" },
@@ -366,6 +404,7 @@ export function FormStep({ step, formData, setFormData, onNext, onPrev, onCancel
         )
       )
     );
+    }
   } else if (step === "classifier") {
     title = t("classifierStep");
     body = e(

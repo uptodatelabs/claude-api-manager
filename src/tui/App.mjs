@@ -84,6 +84,8 @@ export default function App() {
 
     // 레이트 리밋: 프로필 CAM_RATE_LIMIT ("auto"=적응형, 숫자=고정, 0/미설정=무제한)
     const rateLimit = env.CAM_RATE_LIMIT;
+    // x-opencode-session 헤더 on/off: 프로필 CAM_SESSION_HEADER (미설정=기본 on)
+    const sessionHeader = env.CAM_SESSION_HEADER;
     // 분류기 전용 공급자 (미설정 시 메인 공급자와 동일)
     const classifierTargetUrl = env.CAM_CLASSIFIER_BASE_URL || "";
     const classifierApiKey = env.CAM_CLASSIFIER_API_KEY || "";
@@ -103,6 +105,7 @@ export default function App() {
         profileName,
         manager,
         rateLimit,
+        sessionHeader,
         classifierTargetUrl,
         classifierApiKey,
         classifierModel,
